@@ -1,84 +1,47 @@
-"""HTTP surface. Laravel analogy: routes/api.php plus a thin controller.
-
-Keep this file dumb: validate, call the service, map exceptions to status codes.
-No business logic, no model calls.
-"""
+"""API routes. Laravel analogy: routes/api.php plus a thin controller."""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
-from kct import prompts, storage
-from kct.config import settings
-from kct.models import (
-    CaseManifest,
-    DocumentKind,
-    SourceFile,
-    SummarizeRequest,
-    SummarizeResponse,
-)
-from kct.services import summarize
+from kct import extractor
 
-router = APIRouter(prefix="/api/v1", tags=["kct"])
+router = APIRouter(prefix="/api/v1")
+
+
+class SummarizeRequest(BaseModel):
+    case_id: str = "case-001"
+    kind: str = "control_details"  # or "test_plan"
 
 
 @router.get("/health")
 def health() -> dict:
-    return {
-        "status": "ok",
-        "model": settings.model,
-        "location": settings.location,
-        "project_configured": bool(settings.project_id),
-        "storage_root": str(settings.storage_root),
-        "prompts": prompts.available(),
-    }
+    return {"status": "ok", "model": extractor.MODEL, "project": bool(extractor.PROJECT)}
 
 
-@router.get("/cases", response_model=list[str])
-def index_cases() -> list[str]:
-    return storage.list_cases()
+@router.get("/cases")
+def cases() -> list[str]:
+    if not extractor.CASES.is_dir():
+        return []
+    return sorted(p.name for p in extractor.CASES.iterdir() if p.is_dir())
 
 
-@router.get("/cases/{case_id}", response_model=CaseManifest)
-def show_case(case_id: str) -> CaseManifest:
+@router.get("/cases/{case_id}/files/{kind}")
+def files(case_id: str, kind: str) -> list[str]:
     try:
-        return storage.read_manifest(case_id)
-    except storage.CaseNotFound as exc:
+        return [p.name for p in extractor.find_pdfs(case_id, kind)]
+    except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/cases/{case_id}/files/{kind}", response_model=list[SourceFile])
-def list_files(case_id: str, kind: DocumentKind) -> list[SourceFile]:
+@router.post("/summarize")
+def summarize(payload: SummarizeRequest) -> dict:
+    if payload.kind not in ("control_details", "test_plan"):
+        raise HTTPException(status_code=400, detail="kind must be control_details or test_plan")
     try:
-        return storage.source_files(case_id, kind)
-    except storage.CaseNotFound as exc:
+        text = extractor.summarize(payload.case_id, payload.kind)
+    except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except storage.NoSourceFiles as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.post("/cases/{case_id}/summarize", response_model=SummarizeResponse)
-def summarize_document(case_id: str, payload: SummarizeRequest) -> SummarizeResponse:
-    try:
-        return summarize.run(
-            case_id,
-            payload.kind,
-            prompt_version=payload.prompt_version,
-            force=payload.force,
-        )
-    except storage.CaseNotFound as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except storage.NoSourceFiles as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except prompts.PromptNotFound as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    except summarize.UnsupportedSourceFile as exc:
-        raise HTTPException(status_code=415, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        # The run record was already written, so the failure is auditable.
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"{type(exc).__name__}: {exc}") from exc
+    return {"case_id": payload.case_id, "kind": payload.kind, "summary": text}
