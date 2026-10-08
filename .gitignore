@@ -1,0 +1,22 @@
+# Runtime data — never commit. Real evidence must not reach the repo.
+storage/
+!storage/.gitkeep
+
+# Secrets
+.env
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Notebooks: clear outputs before committing
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
