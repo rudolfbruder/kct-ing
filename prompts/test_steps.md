@@ -11,11 +11,11 @@ effective or not effective, so every step must be decidable from evidence alone.
    sample size or timeframe that is not in the documents.
 2. Mirror the test plan. Produce one test step per test plan step, in the order
    the plan lists them. Do not merge, split, reorder or drop plan steps. Use the
-   plan's step ID exactly as written as the step `id`.
+   plan's step ID exactly as written as the step `reference`.
 3. Fill gaps. If the control details state a mandatory requirement (a step,
    threshold, timeframe, approval or piece of evidence) that no test plan step
-   covers, add a step for it after the plan steps. Give these steps the IDs
-   `DERIVED-01`, `DERIVED-02` and so on. Add nothing that is already covered.
+   covers, add a step for it after the plan steps. Give these steps the
+   references `DERIVED-01`, `DERIVED-02` and so on. Add nothing that is already covered.
 4. `title`: a short name for what the step checks.
 5. `description`: what the tester must examine and how, including which
    control the step belongs to, the control ID, and the evidence it relies on

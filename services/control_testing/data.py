@@ -20,9 +20,10 @@ Status = Literal["pending", "effective", "not_effective"]
 
 
 class TestStepDraft(BaseModel):
-    """One test step as the agent writes it. The agent never sets the status."""
+    """One test step as the agent writes it. The database assigns the ID and status."""
 
-    id: str
+    # Step ID from the test plan (0472-01), or DERIVED-01... for gaps the agent filled.
+    reference: str
     title: str
     description: str
     acceptance_criteria: List[str]
@@ -35,14 +36,38 @@ class TestStepList(BaseModel):
     steps: List[TestStepDraft]
 
 
-class TestStep(TestStepDraft):
+class TestStep(BaseModel):
     """A stored test step. Stage 3 changes status from pending to the verdict."""
 
+    # IDs are UUIDs made when the row is saved, the same on every database driver.
+    id: str
+    case_interpretation_id: str
+    case_id: str
+    reference: str
+    title: str
+    description: str
+    acceptance_criteria: List[str]
+    refusal_criteria: List[str]
     status: Status = "pending"
 
 
-class TestStepsResult(BaseModel):
+class CaseInterpretationMetadata(BaseModel):
+    """Header of one Stage 2 run over a case."""
+
+    case_interpretation_id: str
     case_id: str
+    # Folder name of the case under storage/uploads, e.g. case-001.
+    case_reference: str
+    provider: str
+    model: str
+    created_at: str
+    step_count: int
+
+
+class CaseInterpretation(BaseModel):
+    """One Stage 2 run: its metadata, the two summaries and the test steps."""
+
+    metadata: CaseInterpretationMetadata
     summaries: Dict[str, str]
     test_steps: List[TestStep]
 

@@ -10,5 +10,9 @@ python-multipart==0.0.20
 google-genai==1.47.0          # KCT_AI_PROVIDER=gemini
 anthropic[vertex]==0.125.0    # KCT_AI_PROVIDER=anthropic
 
+# Only the storage you use needs to be installed:
+google-cloud-storage==3.9.0   # KCT_FILES_DRIVER=gcs
+google-cloud-bigquery==3.41.0 # KCT_DB_DRIVER=bigquery
+
 # Tests only (fastapi.testclient)
 httpx==0.28.1

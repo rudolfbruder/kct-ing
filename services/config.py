@@ -32,17 +32,20 @@ class Settings:
     anthropic_platform: str  # "vertex" (Claude on Vertex AI) or "api" (Anthropic API key)
     anthropic_region: str
 
+    # Where uploads and outputs go: "local" (under storage_root) or "gcs".
+    files_driver: str
+    gcs_bucket: str
+    gcs_prefix: str  # optional folder inside the bucket
+
+    # Database: "sqlite" (local file) or "bigquery".
+    db_driver: str
+    db_path: Path  # SQLite file
+    bq_dataset: str  # "dataset" in gcp_project, or "project.dataset"
+    bq_location: str  # dataset location, e.g. EU or europe-west4; empty = BigQuery decides
+
     storage_root: Path
     prompts_root: Path
     fixtures_root: Path
-
-    @property
-    def uploads_dir(self) -> Path:
-        return self.storage_root / "uploads"
-
-    @property
-    def outputs_dir(self) -> Path:
-        return self.storage_root / "outputs"
 
     @property
     def logs_dir(self) -> Path:
@@ -55,6 +58,8 @@ def settings() -> Settings:
     if provider not in DEFAULT_MODELS:
         raise ValueError(f"KCT_AI_PROVIDER must be one of {sorted(DEFAULT_MODELS)}, got {provider!r}")
 
+    storage_root = Path(os.environ.get("KCT_STORAGE_ROOT", BASE / "storage"))
+
     return Settings(
         ai_provider=provider,
         ai_model=os.environ.get("KCT_AI_MODEL") or DEFAULT_MODELS[provider],
@@ -65,7 +70,14 @@ def settings() -> Settings:
         gemini_location=os.environ.get("KCT_LOCATION", "europe-west4"),
         anthropic_platform=os.environ.get("KCT_ANTHROPIC_PLATFORM", "vertex").lower(),
         anthropic_region=os.environ.get("KCT_ANTHROPIC_REGION", "europe-west1"),
-        storage_root=Path(os.environ.get("KCT_STORAGE_ROOT", BASE / "storage")),
+        files_driver=os.environ.get("KCT_FILES_DRIVER", "local").lower(),
+        gcs_bucket=os.environ.get("KCT_GCS_BUCKET", ""),
+        gcs_prefix=os.environ.get("KCT_GCS_PREFIX", ""),
+        db_driver=os.environ.get("KCT_DB_DRIVER", "sqlite").lower(),
+        db_path=Path(os.environ.get("KCT_DB_PATH", storage_root / "database.sqlite")),
+        bq_dataset=os.environ.get("KCT_BQ_DATASET", ""),
+        bq_location=os.environ.get("KCT_BQ_LOCATION", ""),
+        storage_root=storage_root,
         prompts_root=Path(os.environ.get("KCT_PROMPTS_ROOT", BASE / "prompts")),
         fixtures_root=Path(os.environ.get("KCT_FIXTURES_ROOT", BASE / "tests" / "fixtures" / "fake_ai")),
     )

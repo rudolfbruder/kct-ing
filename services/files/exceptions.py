@@ -7,3 +7,7 @@ class InvalidUploadError(ValueError):
 
 class CaseNotFoundError(LookupError):
     """The case, or the file asked for within it, does not exist."""
+
+
+class FilesConfigurationError(Exception):
+    """KCT_FILES_DRIVER is unknown, or the GCS bucket is not set."""
