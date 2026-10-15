@@ -1,0 +1,14 @@
+# Versions the code was tested with. On the ING workbench, check what is
+# already installed (pip list) before installing anything.
+fastapi==0.128.8
+uvicorn==0.39.0
+pydantic==2.13.5
+# Needed by FastAPI to accept file uploads (POST /api/v1/test-steps)
+python-multipart==0.0.20
+
+# Only the provider you use needs to be installed:
+google-genai==1.47.0          # KCT_AI_PROVIDER=gemini
+anthropic[vertex]==0.125.0    # KCT_AI_PROVIDER=anthropic
+
+# Tests only (fastapi.testclient)
+httpx==0.28.1

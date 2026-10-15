@@ -1,0 +1,248 @@
+{
+  "steps": [
+    {
+      "id": "0472-01",
+      "title": "Identity verification recorded on the ticket",
+      "description": "CTL-IAM-0472. For each of the 25 sampled resets, obtain the ServiceNow SD ticket (EV-01) and inspect the mandatory 'Identity Verification' section.",
+      "acceptance_criteria": [
+        "The Identity Verification section is present on the ticket.",
+        "The section names the verification factors used.",
+        "The section records the verification outcome.",
+        "The section records the verification timestamp.",
+        "The section records the acting agent."
+      ],
+      "refusal_criteria": [
+        "The Identity Verification section is absent or blank.",
+        "Any of the four required fields (factors, outcome, timestamp, acting agent) is missing.",
+        "The EV-01 ticket export for the sampled reset is not provided."
+      ]
+    },
+    {
+      "id": "0472-02",
+      "title": "At least two approved factors applied",
+      "description": "CTL-IAM-0472. For each sampled ticket, inspect the recorded verification factors in EV-01 and, where Factor A was used, the Mobile Authenticator push log (EV-02).",
+      "acceptance_criteria": [
+        "At least two of the three approved factors (A push challenge, B record challenge, C visual confirmation) are recorded.",
+        "Every recorded factor shows a successfully completed outcome."
+      ],
+      "refusal_criteria": [
+        "Fewer than two factors are recorded.",
+        "A recorded factor shows a failed or partial outcome.",
+        "EV-01 is missing for the sampled reset."
+      ]
+    },
+    {
+      "id": "0472-03",
+      "title": "Only approved factors and attributes used",
+      "description": "CTL-IAM-0472. Where Factor B was used, inspect the three attributes challenged on the EV-01 ticket. Where Factor A was used, agree the challenge to the Mobile Authenticator log (EV-02).",
+      "acceptance_criteria": [
+        "Every Factor B attribute is drawn from the Verify-ID record.",
+        "No Factor B attribute is available in the public corporate directory.",
+        "Every recorded Factor A challenge appears in EV-02 for the colleague's registered device with a successful response."
+      ],
+      "refusal_criteria": [
+        "A public corporate directory attribute was used as a Factor B challenge.",
+        "A recorded Factor A challenge has no corresponding entry in EV-02.",
+        "EV-02 is missing where Factor A was recorded."
+      ]
+    },
+    {
+      "id": "0472-04",
+      "title": "Verification precedes the reset",
+      "description": "CTL-IAM-0472. Compare the identity verification timestamp on the EV-01 ticket to the reset execution timestamp in the ADX audit log extract (EV-03).",
+      "acceptance_criteria": [
+        "The verification timestamp is earlier than the reset execution timestamp.",
+        "Verification and reset were performed by the same agent ID."
+      ],
+      "refusal_criteria": [
+        "The reset was executed before verification.",
+        "The reset was executed without verification.",
+        "The reset was executed by an agent other than the one who verified.",
+        "EV-01 or EV-03 is missing for the sampled reset."
+      ]
+    },
+    {
+      "id": "0472-05",
+      "title": "Rejected requests handled",
+      "description": "CTL-IAM-0472. Obtain all requests in the testing period closed as 'Rejected — identity not verified' (EV-01) and inspect the related SEC incident ticket (EV-04).",
+      "acceptance_criteria": [
+        "No password reset was executed for the rejected request.",
+        "A SEC incident was raised for the rejected request.",
+        "The SEC incident was raised within one hour of the attempt."
+      ],
+      "refusal_criteria": [
+        "A reset was executed despite failed verification.",
+        "No SEC incident was raised.",
+        "The SEC incident was raised more than one hour after the attempt.",
+        "EV-04 is missing for a rejected request."
+      ]
+    },
+    {
+      "id": "0473-01",
+      "title": "Temporary password generation parameters",
+      "description": "CTL-IAM-0473. Inspect the ADX Password Reset Tool configuration (EV-05) in force during the testing period. Tested once for the period, not per sampled item.",
+      "acceptance_criteria": [
+        "Temporary password length is at least 12 characters.",
+        "Complexity settings match Password Baseline BL-SEC-012.",
+        "Generation is system-performed with no agent override available."
+      ],
+      "refusal_criteria": [
+        "Length is below 12 characters.",
+        "Complexity deviates from BL-SEC-012.",
+        "An agent-editable password field is present.",
+        "EV-05 does not cover the full testing period."
+      ]
+    },
+    {
+      "id": "0473-02",
+      "title": "Temporary password validity window",
+      "description": "CTL-IAM-0473. Inspect the configured expiry setting in EV-05, then agree it to the generation and expiry timestamps in the ADX audit log extract (EV-03) for each sampled reset. The configuration attribute is tested once for the period.",
+      "acceptance_criteria": [
+        "The configured validity does not exceed 60 minutes.",
+        "For every sampled reset, the expiry timestamp is no more than 60 minutes after generation."
+      ],
+      "refusal_criteria": [
+        "The configured validity is above 60 minutes.",
+        "Any sampled item has an expiry beyond 60 minutes after generation.",
+        "EV-05 or EV-03 is missing."
+      ]
+    },
+    {
+      "id": "0473-03",
+      "title": "Forced change at first logon",
+      "description": "CTL-IAM-0473. For each sampled reset, inspect the forced-change flag recorded in the ADX audit log extract (EV-03).",
+      "acceptance_criteria": [
+        "The 'User must change password at next logon' flag is set for every sampled account at the time of reset."
+      ],
+      "refusal_criteria": [
+        "The flag is not set.",
+        "The flag was removed before first logon.",
+        "EV-03 does not contain the sampled reset."
+      ]
+    },
+    {
+      "id": "0473-04",
+      "title": "Single use enforced",
+      "description": "CTL-IAM-0473. For each sampled reset, inspect authentication events following issuance of the temporary password in the ADX audit log extract (EV-03).",
+      "acceptance_criteria": [
+        "The temporary password authenticates at most once.",
+        "Any subsequent authentication attempt with the same credential is rejected, or the credential is shown as invalidated."
+      ],
+      "refusal_criteria": [
+        "More than one successful authentication with the same temporary password.",
+        "EV-03 does not contain first-use events for the sampled reset."
+      ]
+    },
+    {
+      "id": "0473-05",
+      "title": "Approved delivery channel",
+      "description": "CTL-IAM-0473. For each sampled reset, agree the delivery record in the SMS gateway delivery log (EV-06) and the ServiceNow ticket (EV-01) to the registered mobile number or to the manager secure-link route.",
+      "acceptance_criteria": [
+        "Delivery was made to the colleague's registered mobile number, or via secure link to the line manager where no mobile number is registered.",
+        "There is no evidence of delivery by e-mail, chat or verbal communication."
+      ],
+      "refusal_criteria": [
+        "Delivery was made to an unregistered number.",
+        "The ticket indicates the password was read out, or sent by e-mail or chat.",
+        "EV-06 has no delivery record for the sampled reset."
+      ]
+    },
+    {
+      "id": "0474-01",
+      "title": "Reconciliation timeliness",
+      "description": "CTL-IAM-0474. For each month in the testing period (January, February, March 2026), inspect the monthly reconciliation workbook (EV-07) and the reviewer approval e-mail (EV-10) for completion and approval dates.",
+      "acceptance_criteria": [
+        "The reconciliation was completed on or before the 10th working day following month end.",
+        "The reconciliation was approved on or before the 10th working day following month end."
+      ],
+      "refusal_criteria": [
+        "Completion after the 10th working day following month end.",
+        "Approval after the 10th working day following month end.",
+        "No completion or approval date is evidenced.",
+        "EV-07 or EV-10 is missing for a month."
+      ]
+    },
+    {
+      "id": "0474-02",
+      "title": "Population completeness",
+      "description": "CTL-IAM-0474. For each month, agree the record count of the ADX audit extract used in the reconciliation workbook (EV-07) to the ADX source record count for the same month (EV-03).",
+      "acceptance_criteria": [
+        "Record counts agree, or differences are explained and supported within the workbook.",
+        "The extract period covers the full month."
+      ],
+      "refusal_criteria": [
+        "Counts differ with no supported explanation.",
+        "The extract period does not cover the full month."
+      ]
+    },
+    {
+      "id": "0474-03",
+      "title": "Reconciliation performed",
+      "description": "CTL-IAM-0474. For each month, inspect the matching performed in the reconciliation workbook (EV-07) between reset events and approved tickets.",
+      "acceptance_criteria": [
+        "Every reset event in the month is either matched to an approved ticket with a completed Identity Verification section, or recorded as an exception."
+      ],
+      "refusal_criteria": [
+        "Reset events are left unmatched and not recorded as exceptions.",
+        "Reset events are matched to tickets lacking a completed Identity Verification section."
+      ]
+    },
+    {
+      "id": "0474-04",
+      "title": "Exception handling",
+      "description": "CTL-IAM-0474. For every exception raised in the testing period, inspect the IAM Exception Register entry (EV-08), the investigation notes and the closure date.",
+      "acceptance_criteria": [
+        "Each exception was investigated and closed within five working days.",
+        "Any exception confirmed as an unauthorised reset was escalated to the CISO office the same working day.",
+        "A SEC incident was raised the same working day for any confirmed unauthorised reset."
+      ],
+      "refusal_criteria": [
+        "An exception is open beyond five working days without documented justification.",
+        "A confirmed unauthorised reset was not escalated the same working day.",
+        "EV-08 is missing."
+      ]
+    },
+    {
+      "id": "0474-05",
+      "title": "Independent review",
+      "description": "CTL-IAM-0474. For each month, inspect the reviewer approval e-mail (EV-10) and compare the approver to the preparer named in the reconciliation workbook (EV-07).",
+      "acceptance_criteria": [
+        "Approval was given by the IAM Operations Manager or a documented delegate.",
+        "The approver is a different person from the preparer.",
+        "The approval is dated on or after the date the workbook was completed."
+      ],
+      "refusal_criteria": [
+        "Self-approval by the preparer.",
+        "Approval by a person other than the IAM Operations Manager or a documented delegate.",
+        "Approval dated before the workbook was completed.",
+        "EV-10 is missing for a month."
+      ]
+    },
+    {
+      "id": "DERIVED-01",
+      "title": "Factor B challenges all three Verify-ID attributes",
+      "description": "CTL-IAM-0472, control details section 3.1. Where Factor B was used on a sampled ticket (EV-01), confirm the caller answered all three required attributes. No test plan step checks the number or identity of the attributes.",
+      "acceptance_criteria": [
+        "The caller was challenged on employee number, cost centre code and line manager name.",
+        "All three attributes were answered correctly."
+      ],
+      "refusal_criteria": [
+        "Fewer than three attributes were challenged.",
+        "An attribute other than employee number, cost centre code or line manager name was used.",
+        "Any attribute was answered incorrectly and Factor B was still recorded as passed."
+      ]
+    },
+    {
+      "id": "DERIVED-02",
+      "title": "Agent mismatch recorded as reconciliation exception",
+      "description": "CTL-IAM-0474, control details section 3.3. For each month, inspect the reconciliation workbook (EV-07) and the IAM Exception Register (EV-08) for reset events where the acting agent differs from the agent named on the ticket. Step 0474-03 covers missing tickets and incomplete verification, but not agent mismatches.",
+      "acceptance_criteria": [
+        "Every reset event where the acting agent differs from the agent named on the ticket is recorded as an exception in the IAM Exception Register."
+      ],
+      "refusal_criteria": [
+        "A reset event with an agent mismatch is treated as matched and not recorded as an exception.",
+        "The workbook does not compare the acting agent to the agent named on the ticket."
+      ]
+    }
+  ]
+}
