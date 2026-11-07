@@ -11,7 +11,10 @@ from pathlib import Path
 if not all(importlib.util.find_spec(m) for m in ("fastapi", "httpx", "multipart")):
     raise unittest.SkipTest("API packages not installed: fastapi, httpx, python-multipart")
 
-# Settings are read once, so set them before importing the app.
+# Settings are read once, so set them before importing the app. Settings of whoever runs the
+# tests (.env, a notebook's Step 1, the shell) must not change the tests: drop them all first.
+for _key in [k for k in os.environ if k.startswith("KCT_")]:
+    del os.environ[_key]
 STORAGE = Path(tempfile.mkdtemp(prefix="kct-test-"))
 os.environ["KCT_ENV_FILE"] = ""  # never read the developer's .env
 os.environ["KCT_AI_PROVIDER"] = "fake"
