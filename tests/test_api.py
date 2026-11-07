@@ -66,13 +66,13 @@ class TestStepsApiTest(unittest.TestCase):
 
         self.assertTrue((STORAGE / "uploads" / case_id / "control_details" / "cd.pdf").is_file())
         outputs = STORAGE / "outputs" / case_id
-        saved = json.loads((outputs / f"case_interpretation_{interpretation_id}.json").read_text())
+        saved = json.loads((outputs / f"case_interpretation_{interpretation_id}.json").read_text(encoding="utf-8"))
         self.assertEqual(saved, body)
         self.assertTrue((outputs / "control_details_summary.md").is_file())
         self.assertTrue((outputs / "test_plan_summary.md").is_file())
         self.assertFalse((STORAGE / "database.sqlite").exists())  # memory driver by default
 
-        calls = [json.loads(line) for line in (STORAGE / "logs" / "agents.log").read_text().splitlines()]
+        calls = [json.loads(line) for line in (STORAGE / "logs" / "agents.log").read_text(encoding="utf-8").splitlines()]
         self.assertIn("test_steps", {c["agent"] for c in calls})
         self.assertTrue(all(c["provider"] == "fake" for c in calls))
 

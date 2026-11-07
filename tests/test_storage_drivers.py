@@ -51,7 +51,7 @@ class FileServiceOnLocalDiskTest(unittest.TestCase):
         self.assertTrue((self.root / "uploads/case-001/control_details/cd.pdf").is_file())
 
         self.files.save_output("case-001", "x.md", "hello")
-        self.assertEqual((self.root / "outputs/case-001/x.md").read_text(), "hello")
+        self.assertEqual((self.root / "outputs/case-001/x.md").read_text(encoding="utf-8"), "hello")
 
     def test_skips_a_taken_case_number(self) -> None:
         disk = self.files.disk
