@@ -19,3 +19,7 @@ httpx==0.28.1
 
 # Notebooks only (tables in notebooks/06_database.ipynb and scripts/test_steps.py table())
 # pandas==2.3.3
+
+# Checking that every notebook runs (scripts/run_notebooks.py)
+# nbclient
+# ipykernel

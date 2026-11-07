@@ -161,9 +161,9 @@ from pathlib import Path
 db = Path("storage/sqlite_test.sqlite")
 db.parent.mkdir(parents=True, exist_ok=True)
 with sqlite3.connect(db) as con:
-    con.execute("CREATE TABLE IF NOT EXISTS test_records (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
-    con.execute("INSERT INTO test_records (name) VALUES (?)", ("written by kct.sh sqlite",))
-    rows = con.execute("SELECT id, name, created_at FROM test_records ORDER BY id DESC LIMIT 5").fetchall()
+    con.execute("CREATE TABLE IF NOT EXISTS setup_check (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+    con.execute("INSERT INTO setup_check (name) VALUES (?)", ("written by kct.sh sqlite",))
+    rows = con.execute("SELECT id, name, created_at FROM setup_check ORDER BY id DESC LIMIT 5").fetchall()
 print("SQLite", sqlite3.sqlite_version, "works; file", db)
 for row in rows:
     print(*row, sep="  ")

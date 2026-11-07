@@ -30,8 +30,12 @@ delivery   ●── 01 ──── 02 ──── 03 ──── …     one
 2. **Every release stands on its own**: the code, tests, notebooks, README and
    `.env.example` describe only what exists at that release. Nothing of a later release
    may leak into an earlier one, not even in the README.
-3. **Tests pass at every release**: `python -m unittest discover tests` (fake AI, no
-   cloud needed). Check before tagging.
+3. **Tests pass and every notebook runs at every release**, checked before tagging and
+   before pushing:
+   ```bash
+   python -m unittest discover tests        # fake AI, no cloud needed
+   python scripts/run_notebooks.py          # every notebook in order, fake AI, temporary storage
+   ```
 4. **Never rewrite a delivered release.** Once a release is merged into `master` or
    handed over, its commit, tag and branch stay as they are.
 5. **Undelivered releases may be rewritten** (they never left this machine), as long as
@@ -49,6 +53,7 @@ delivery   ●── 01 ──── 02 ──── 03 ──── …     one
 git checkout delivery                     # the tip: the newest release
 # ... make the change, with tests and README ...
 python -m unittest discover tests
+python scripts/run_notebooks.py
 git commit -am "Release NN: <what it delivers>"
 git tag delivery-NN
 git branch release/NN-<short-name>
