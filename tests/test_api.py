@@ -4,8 +4,12 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import importlib.util
 import unittest
 from pathlib import Path
+
+if not all(importlib.util.find_spec(m) for m in ("fastapi", "httpx", "multipart")):
+    raise unittest.SkipTest("API packages not installed: fastapi, httpx, python-multipart")
 
 # Settings are read once, so set them before importing the app.
 STORAGE = Path(tempfile.mkdtemp(prefix="kct-test-"))

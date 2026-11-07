@@ -1,13 +1,24 @@
 """File disks and the BigQuery driver, with the Google Cloud calls replaced."""
 from __future__ import annotations
 
+import importlib.util
 import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
-from google.api_core.exceptions import NotFound, PreconditionFailed
+try:
+    from google.api_core.exceptions import NotFound, PreconditionFailed
+except ModuleNotFoundError:  # only needed by the GCS and BigQuery tests, skipped below
+    NotFound = PreconditionFailed = Exception
+
+
+def installed(module: str) -> bool:
+    try:
+        return importlib.util.find_spec(module) is not None
+    except ModuleNotFoundError:
+        return False
 
 from services.control_testing.data import DocumentKind, TestStepDraft
 from services.database.exceptions import DatabaseConfigurationError, RecordNotFoundError
@@ -56,6 +67,7 @@ class FileServiceOnLocalDiskTest(unittest.TestCase):
             self.files.documents("case-404", DocumentKind.TEST_PLAN)
 
 
+@unittest.skipUnless(installed("google.cloud.storage"), "google-cloud-storage is not installed")
 class GcsDiskTest(unittest.TestCase):
     def setUp(self) -> None:
         from services.files.disks.gcs import GcsDisk
@@ -97,6 +109,7 @@ class GcsDiskTest(unittest.TestCase):
         self.assertEqual(self.disk.directories("uploads"), ["case-001", "case-002"])
 
 
+@unittest.skipUnless(installed("google.cloud.bigquery"), "google-cloud-bigquery is not installed")
 class BigQueryRepositoryTest(unittest.TestCase):
     def setUp(self) -> None:
         from services.database.drivers.bigquery import BigQueryRepository

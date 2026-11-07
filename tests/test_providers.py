@@ -1,6 +1,7 @@
 """Provider tests with the network call replaced, using each SDK's real types."""
 from __future__ import annotations
 
+import importlib.util
 import os
 import unittest
 from unittest import mock
@@ -22,6 +23,14 @@ REQUEST = ProviderRequest(
 ANSWER = '{"steps": []}'
 
 
+def installed(module: str) -> bool:
+    try:
+        return importlib.util.find_spec(module) is not None
+    except ModuleNotFoundError:
+        return False
+
+
+@unittest.skipUnless(installed("google.genai"), "google-genai is not installed")
 class GeminiProviderTest(unittest.TestCase):
     def setUp(self) -> None:
         from google.genai import types
@@ -74,6 +83,7 @@ class GeminiProviderTest(unittest.TestCase):
         self.assertTrue(self.provider.prompt(REQUEST).truncated)
 
 
+@unittest.skipUnless(installed("anthropic"), "anthropic is not installed (only needed for Claude)")
 class AnthropicProviderTest(unittest.TestCase):
     def setUp(self) -> None:
         from services.ai.providers.anthropic import AnthropicProvider

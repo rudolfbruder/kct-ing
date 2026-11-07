@@ -6,3 +6,4 @@ Deliver them in order; mark a release "delivered" (with the date) once it is in 
 | Release | Branch | Tag | Contents | Status |
 |---|---|---|---|---|
 | 01 | `release/01-foundation` | `delivery-01` | Services shared by API and notebooks; Stage naming replaced by Interpretation; memory database by default (SQLite/BigQuery kept); .env loaded by the app; /ask smoke test; Docker; kct.sh; notebooks 01-06 | prepared |
+| 01.1 | `release/01.1-setup-fixes` | `delivery-01.1` | Setup fixes from the first run in ING (Windows laptop): tests skip optional packages that are not installed instead of failing; 01_setup installs httpx with the API group; README section for Windows | prepared |

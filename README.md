@@ -160,6 +160,23 @@ Notebooks: run `jupyter lab` in the project folder and open
 `notebooks/02_hello.ipynb`, then Run > Run All Cells. The notebooks call the
 services directly, so the API does not need to be running.
 
+## Run on Windows
+
+Works the same, with three differences:
+
+- `kct.sh` is a bash script and does not run in the Windows command prompt or
+  PowerShell. Use `notebooks/01_setup.ipynb` instead (it does the same), or Git Bash.
+- Python commands:
+  ```bat
+  py -m venv .venv
+  .venv\Scripts\activate
+  pip install -r requirements.txt
+  ```
+  `.env` needs no exporting: the app reads it itself.
+- Gemini needs a Google login on the laptop: install the Google Cloud CLI for
+  Windows and run `gcloud auth application-default login` once. If that is not
+  allowed, ask the platform team how laptops reach Vertex AI.
+
 ## Run on Vertex AI Workbench (as in ING)
 
 Docker is for your own computer only. In ING there is no Docker: the
@@ -670,6 +687,10 @@ tail -n 1 storage/logs/agents.log | python -m json.tool
 ```bash
 python -m unittest discover tests
 ```
+
+Tests for optional packages that are not installed are skipped, not failed:
+the API tests without `fastapi`/`httpx`/`python-multipart`, the Claude tests
+without `anthropic`, the GCS and BigQuery tests without the Google Cloud packages.
 
 `tests/test_database.py` checks the SQLite and memory repositories and the notebook script.
 `tests/test_storage_drivers.py` checks the file service and the GCS and BigQuery
