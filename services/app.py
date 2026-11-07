@@ -24,6 +24,7 @@ from services.control_testing.interpretation_service import InterpretationServic
 from services.database import manager as database_manager
 from services.database.contracts import CaseInterpretationRepository
 from services.assessment.assessment_service import AssessmentService
+from services.importing.case_import_service import CaseImportService
 from services.evidences.docx_converter import DocxConverter
 from services.evidences.evidence_service import EvidenceService
 from services.evidences.evidence_splitter import EvidenceSplitter
@@ -42,6 +43,7 @@ class App:
     ask: AskService
     evidences: EvidenceService
     assessments: AssessmentService
+    importer: CaseImportService
     docx_converter: DocxConverter
     excel_converter: ExcelConverter
     msg_converter: MsgConverter
@@ -55,16 +57,19 @@ def boot() -> App:
     docx_converter = DocxConverter()
     excel_converter = ExcelConverter()
     msg_converter = MsgConverter(docx_converter, excel_converter)
+    interpretations = InterpretationService(files, database)
     evidences = EvidenceService(settings().evidences_root, docx_converter, excel_converter, msg_converter,
                                 EvidenceSplitter.from_settings(settings()))
+    assessments = AssessmentService(files, database, evidences)
     return App(
         files=files,
         database=database,
         summaries=SummaryService(files),
-        interpretations=InterpretationService(files, database),
+        interpretations=interpretations,
         ask=AskService(),
         evidences=evidences,
-        assessments=AssessmentService(files, database, evidences),
+        assessments=assessments,
+        importer=CaseImportService(files, evidences, interpretations, assessments, docx_converter),
         docx_converter=docx_converter,
         excel_converter=excel_converter,
         msg_converter=msg_converter,

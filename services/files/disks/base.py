@@ -24,3 +24,7 @@ class Disk(Protocol):
     def directories(self, directory: str) -> List[str]:
         """Names of the subdirectories of a directory, sorted."""
         ...
+
+    def delete(self, path: str) -> None:
+        """Deletes one file; nothing happens when it does not exist."""
+        ...

@@ -1,0 +1,4 @@
+[
+  {"role": "control_details", "reason": "Fake answer: describes the control activity, its owner and frequency."},
+  {"role": "test_plan", "reason": "Fake answer: lists test steps, the population and the sample size."}
+]

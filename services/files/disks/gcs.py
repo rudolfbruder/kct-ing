@@ -44,6 +44,12 @@ class GcsDisk:
             pass
         return sorted(p[len(prefix):].rstrip("/") for p in blobs.prefixes)
 
+    def delete(self, path: str) -> None:
+        try:
+            self.bucket.blob(self._key(path)).delete()
+        except NotFound:
+            pass
+
     def _key(self, path: str) -> str:
         path = path.strip("/")
         return f"{self.prefix}/{path}" if self.prefix else path
