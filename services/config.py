@@ -25,6 +25,8 @@ class Settings:
     # Output token limits per agent. On Gemini 2.5 and Claude, thinking counts against them.
     summary_max_tokens: int
     steps_max_tokens: int
+    assessment_max_tokens: int   # per evidence part
+    verdict_max_tokens: int      # the final verdict call
 
     # Google Cloud (Gemini, and Claude when anthropic_platform is "vertex")
     gcp_project: str
@@ -51,6 +53,9 @@ class Settings:
     pdf_max_mb: float
     pdf_overlap_pages: int
     evidence_max_tokens: int
+    # Brand on the report and dashboard; the logo file is never committed (see services/branding.py).
+    brand_name: str
+    brand_logo: Path
     prompts_root: Path
     fixtures_root: Path
 
@@ -99,6 +104,8 @@ def settings() -> Settings:
         temperature=float(os.environ.get("KCT_TEMPERATURE", "0")),
         summary_max_tokens=int(os.environ.get("KCT_SUMMARY_MAX_TOKENS", "16384")),
         steps_max_tokens=int(os.environ.get("KCT_STEPS_MAX_TOKENS", "32768")),
+        assessment_max_tokens=int(os.environ.get("KCT_ASSESSMENT_MAX_TOKENS", "32768")),
+        verdict_max_tokens=int(os.environ.get("KCT_VERDICT_MAX_TOKENS", "32768")),
         gcp_project=os.environ.get("KCT_PROJECT_ID", ""),
         gemini_location=os.environ.get("KCT_LOCATION", "europe-west4"),
         anthropic_platform=os.environ.get("KCT_ANTHROPIC_PLATFORM", "vertex").lower(),
@@ -116,6 +123,8 @@ def settings() -> Settings:
         pdf_max_mb=float(os.environ.get("KCT_PDF_MAX_MB", "20")),
         pdf_overlap_pages=int(os.environ.get("KCT_PDF_OVERLAP_PAGES", "2")),
         evidence_max_tokens=int(os.environ.get("KCT_EVIDENCE_MAX_TOKENS", "300000")),
+        brand_name=os.environ.get("KCT_BRAND_NAME", "ING"),
+        brand_logo=Path(os.environ.get("KCT_BRAND_LOGO", BASE / "branding" / "logo.png")),
         prompts_root=Path(os.environ.get("KCT_PROMPTS_ROOT", BASE / "prompts")),
         fixtures_root=Path(os.environ.get("KCT_FIXTURES_ROOT", BASE / "tests" / "fixtures" / "fake_ai")),
     )

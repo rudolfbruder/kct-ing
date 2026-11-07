@@ -1,0 +1,215 @@
+{
+  "verdicts": [
+    {
+      "step_reference": "0472-01",
+      "verdict": "effective",
+      "no_evidence": false,
+      "reason": "EV-01 and EV-03 show the acceptance criteria hold for every sampled ticket, and no refusal criterion is met.",
+      "exceptions": [],
+      "references": [
+        {
+          "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+          "location": "page 1"
+        },
+        {
+          "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+          "location": "Sheet \"Reset events\""
+        }
+      ]
+    },
+    {
+      "step_reference": "0472-02",
+      "verdict": "effective",
+      "no_evidence": false,
+      "reason": "EV-01 and EV-03 show the acceptance criteria hold for every sampled ticket, and no refusal criterion is met.",
+      "exceptions": [],
+      "references": [
+        {
+          "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+          "location": "page 1"
+        },
+        {
+          "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+          "location": "Sheet \"Reset events\""
+        }
+      ]
+    },
+    {
+      "step_reference": "0472-03",
+      "verdict": "effective",
+      "no_evidence": false,
+      "reason": "EV-01 and EV-03 show the acceptance criteria hold for every sampled ticket, and no refusal criterion is met.",
+      "exceptions": [],
+      "references": [
+        {
+          "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+          "location": "page 1"
+        },
+        {
+          "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+          "location": "Sheet \"Reset events\""
+        }
+      ]
+    },
+    {
+      "step_reference": "0472-04",
+      "verdict": "not_effective",
+      "no_evidence": false,
+      "reason": "EV-01 shows that ticket SD-105112 was reset at 08:04, before the identity verification at 08:05, and by agent AGT-0211 while AGT-0193 verified. A refusal criterion is met, so the step is not effective.",
+      "exceptions": [
+        {
+          "item": "SD-105112",
+          "description": "Password reset executed at 08:04, one minute before the identity verification at 08:05, by agent AGT-0211 while AGT-0193 verified.",
+          "reference": {
+            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+            "location": "page 1, table 'Sampled tickets', row SD-105112"
+          }
+        }
+      ],
+      "references": [
+        {
+          "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+          "location": "page 1, table 'Sampled tickets', row SD-105112"
+        }
+      ]
+    },
+    {
+      "step_reference": "0472-05",
+      "verdict": "effective",
+      "no_evidence": false,
+      "reason": "EV-01 and EV-03 show the acceptance criteria hold for every sampled ticket, and no refusal criterion is met.",
+      "exceptions": [],
+      "references": [
+        {
+          "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+          "location": "page 1"
+        },
+        {
+          "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+          "location": "Sheet \"Reset events\""
+        }
+      ]
+    },
+    {
+      "step_reference": "0473-01",
+      "verdict": "not_effective",
+      "no_evidence": false,
+      "reason": "The evidence covers only part of the sampled items; not every acceptance criterion is shown as met for the full sample.",
+      "exceptions": [],
+      "references": [
+        {
+          "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+          "location": "Sheet \"Reset events\""
+        }
+      ]
+    },
+    {
+      "step_reference": "0473-02",
+      "verdict": "not_effective",
+      "no_evidence": false,
+      "reason": "The evidence covers only part of the sampled items; not every acceptance criterion is shown as met for the full sample.",
+      "exceptions": [],
+      "references": [
+        {
+          "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+          "location": "Sheet \"Reset events\""
+        }
+      ]
+    },
+    {
+      "step_reference": "0473-03",
+      "verdict": "not_effective",
+      "no_evidence": false,
+      "reason": "The evidence covers only part of the sampled items; not every acceptance criterion is shown as met for the full sample.",
+      "exceptions": [],
+      "references": [
+        {
+          "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+          "location": "Sheet \"Reset events\""
+        }
+      ]
+    },
+    {
+      "step_reference": "0473-04",
+      "verdict": "not_effective",
+      "no_evidence": false,
+      "reason": "The evidence covers only part of the sampled items; not every acceptance criterion is shown as met for the full sample.",
+      "exceptions": [],
+      "references": [
+        {
+          "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+          "location": "Sheet \"Reset events\""
+        }
+      ]
+    },
+    {
+      "step_reference": "0473-05",
+      "verdict": "not_effective",
+      "no_evidence": false,
+      "reason": "The evidence covers only part of the sampled items; not every acceptance criterion is shown as met for the full sample.",
+      "exceptions": [],
+      "references": [
+        {
+          "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+          "location": "Sheet \"Reset events\""
+        }
+      ]
+    },
+    {
+      "step_reference": "0474-01",
+      "verdict": "not_effective",
+      "no_evidence": true,
+      "reason": "No evidence part says anything about this step.",
+      "exceptions": [],
+      "references": []
+    },
+    {
+      "step_reference": "0474-02",
+      "verdict": "not_effective",
+      "no_evidence": true,
+      "reason": "No evidence part says anything about this step.",
+      "exceptions": [],
+      "references": []
+    },
+    {
+      "step_reference": "0474-03",
+      "verdict": "not_effective",
+      "no_evidence": true,
+      "reason": "No evidence part says anything about this step.",
+      "exceptions": [],
+      "references": []
+    },
+    {
+      "step_reference": "0474-04",
+      "verdict": "not_effective",
+      "no_evidence": true,
+      "reason": "No evidence part says anything about this step.",
+      "exceptions": [],
+      "references": []
+    },
+    {
+      "step_reference": "0474-05",
+      "verdict": "not_effective",
+      "no_evidence": true,
+      "reason": "No evidence part says anything about this step.",
+      "exceptions": [],
+      "references": []
+    },
+    {
+      "step_reference": "DERIVED-01",
+      "verdict": "not_effective",
+      "no_evidence": true,
+      "reason": "No evidence part says anything about this step.",
+      "exceptions": [],
+      "references": []
+    },
+    {
+      "step_reference": "DERIVED-02",
+      "verdict": "not_effective",
+      "no_evidence": true,
+      "reason": "No evidence part says anything about this step.",
+      "exceptions": [],
+      "references": []
+    }
+  ]
+}

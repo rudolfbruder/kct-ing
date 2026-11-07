@@ -28,6 +28,7 @@ from services.control_testing.data import (
     TestStep,
     TestStepDraft,
 )
+from services.database.drivers.bigquery_assessments import ASSESSMENT_SCHEMA, BigQueryAssessments
 from services.database.exceptions import DatabaseConfigurationError, RecordNotFoundError
 
 SCHEMA = """
@@ -104,7 +105,7 @@ JOIN `{ds}.cases` c ON c.id = ci.case_id
 """
 
 
-class BigQueryRepository:
+class BigQueryRepository(BigQueryAssessments):
     def __init__(self, dataset: str, project: str = "", location: str = "") -> None:
         if not dataset:
             raise DatabaseConfigurationError("KCT_DB_DRIVER=bigquery needs KCT_BQ_DATASET")
@@ -112,7 +113,7 @@ class BigQueryRepository:
         # "dataset" means a dataset in the client's project; "project.dataset" is used as is.
         self.dataset = dataset if "." in dataset else f"{self.client.project}.{dataset}"
         try:
-            self._query(SCHEMA)
+            self._query(SCHEMA + ASSESSMENT_SCHEMA)
         except NotFound as exc:
             raise DatabaseConfigurationError(
                 f"BigQuery dataset {self.dataset} not found. Create it first, in the same "

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from routes.api import router
 from services.ai.exceptions import AiConfigurationError
+from services.assessment.exceptions import AssessmentFailedError
 from services.control_testing.exceptions import InterpretationFailedError
 from services.database.exceptions import DatabaseConfigurationError, RecordNotFoundError
 from services.evidences.exceptions import ConversionError, InvalidEvidenceError
@@ -66,3 +67,9 @@ def invalid_evidence(_: Request, exc: InvalidEvidenceError) -> JSONResponse:
 def conversion_failed(_: Request, exc: ConversionError) -> JSONResponse:
     log.error("Evidence conversion failed: %s", exc)
     return _error(422, exc)
+
+
+@app.exception_handler(AssessmentFailedError)
+def assessment_failed(_: Request, exc: AssessmentFailedError) -> JSONResponse:
+    log.error("%s", exc)
+    return _error(409, exc)

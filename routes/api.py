@@ -6,6 +6,7 @@ from typing import List
 from fastapi import APIRouter
 
 from controllers.ask_controller import AskController
+from controllers.assessments_controller import AssessmentsController
 from controllers.case_interpretations_controller import CaseInterpretationsController
 from controllers.cases_controller import CasesController
 from controllers.evidences_controller import (
@@ -22,6 +23,7 @@ from services.control_testing.data import (
     CaseInterpretationMetadata,
     SummaryResult,
 )
+from services.assessment.data import Assessment, AssessmentMetadata
 from services.playground.ask_service import AskResult
 
 kct = boot()
@@ -31,6 +33,7 @@ test_steps = TestStepsController(kct.interpretations)
 interpretations = CaseInterpretationsController(kct.database)
 ask = AskController(kct.ask)
 evidences = EvidencesController(kct.files, kct.evidences)
+assessments = AssessmentsController(kct.assessments)
 
 router = APIRouter(prefix="/api/v1")
 
@@ -73,3 +76,14 @@ router.add_api_route(
 router.add_api_route(
     "/cases/{case_id}/evidences/parts", evidences.parts, methods=["GET"], response_model=List[EvidencePartModel]
 )
+
+# Assessment: runs in the background
+router.add_api_route(
+    "/cases/{case_id}/assessments", assessments.store, methods=["POST"], response_model=AssessmentMetadata,
+    status_code=202,
+)
+router.add_api_route(
+    "/cases/{case_id}/assessments", assessments.index, methods=["GET"], response_model=List[AssessmentMetadata]
+)
+router.add_api_route("/assessments/{assessment_id}", assessments.show, methods=["GET"], response_model=Assessment)
+router.add_api_route("/assessments/{assessment_id}/report.pdf", assessments.report, methods=["GET"])

@@ -38,6 +38,10 @@ key.json
 *.pptx
 !tests/fixtures/**
 
+# Brand files (logo, fonts): trademarks, never in this public repository
+branding/*
+!branding/README.md
+
 # Python
 __pycache__/
 *.py[cod]

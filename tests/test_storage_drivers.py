@@ -184,6 +184,31 @@ class BigQueryRepositoryTest(unittest.TestCase):
             self.db.latest_interpretation("case-404")
 
 
+    def test_assessment_tables_and_writes(self) -> None:
+        from services.assessment.data import AssessmentMetadata, StepVerdict
+
+        ddl = self.sql(self.client.query.call_args_list[0])
+        for table in ["assessments", "assessment_parts", "step_verdicts"]:
+            self.assertIn(f"CREATE TABLE IF NOT EXISTS `p.kct.{table}`", ddl)
+
+        self.client.query.reset_mock()
+        self.db.create_assessment(AssessmentMetadata(
+            assessment_id="a-1", case_id="c-1", case_reference="case-001", case_interpretation_id="i-1",
+            status="queued", provider="gemini", model="m", created_at="2026-11-07T00:00:00+00:00"))
+        insert = self.client.query.call_args_list[0]
+        self.assertIn("INSERT INTO `p.kct.assessments`", self.sql(insert))
+        self.assertEqual(self.params(insert)["id"], "a-1")
+
+        self.db.update_assessment("a-1", status="running", parts_done=2)
+        update = self.client.query.call_args_list[1]
+        self.assertIn("UPDATE `p.kct.assessments` SET status = @status, parts_done = @parts_done", self.sql(update))
+
+        self.db.save_verdicts("a-1", [StepVerdict(id="v-1", test_step_id="s-1", step_reference="0472-01", title="T",
+                                                  verdict="effective", no_evidence=False, reason="R")])
+        verdicts = self.client.query.call_args_list[2]
+        self.assertIn("UPDATE `p.kct.test_steps` t", self.sql(verdicts))         # step status follows the verdict
+        self.assertIn('"test_step_id": "s-1"', self.params(verdicts)["rows"])
+
 
 if __name__ == "__main__":
     unittest.main()
