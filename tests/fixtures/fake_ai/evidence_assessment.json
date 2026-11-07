@@ -1,712 +1,1606 @@
 {
-  "findings": [
-    {
+ "_match": [
+  {
+   "regex": "Evidence: [^\\n]*EV-04",
+   "answer": {
+    "findings": [
+     {
       "step_reference": "0472-01",
-      "relevance": "supports",
-      "criteria": [
-        {
-          "criterion": "The Identity Verification section is present on the ticket.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The section names the verification factors used.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The section records the verification outcome.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The section records the verification timestamp.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The section records the acting agent.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The Identity Verification section is absent or blank.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Any of the four required fields (factors, outcome, timestamp, acting agent) is missing.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The EV-01 ticket export for the sampled reset is not provided.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
-      ],
+      "relevance": "not_relevant",
+      "criteria": [],
       "exceptions": [],
-      "summary": "The sampled tickets show this criterion holds for the tickets in this evidence."
-    },
-    {
+      "summary": ""
+     },
+     {
       "step_reference": "0472-02",
-      "relevance": "supports",
-      "criteria": [
-        {
-          "criterion": "At least two of the three approved factors (A push challenge, B record challenge, C visual confirmation) are recorded.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Every recorded factor shows a successfully completed outcome.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Fewer than two factors are recorded.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "A recorded factor shows a failed or partial outcome.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "EV-01 is missing for the sampled reset.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
-      ],
+      "relevance": "not_relevant",
+      "criteria": [],
       "exceptions": [],
-      "summary": "The sampled tickets show this criterion holds for the tickets in this evidence."
-    },
-    {
+      "summary": ""
+     },
+     {
       "step_reference": "0472-03",
-      "relevance": "supports",
-      "criteria": [
-        {
-          "criterion": "Every Factor B attribute is drawn from the Verify-ID record.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "No Factor B attribute is available in the public corporate directory.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Every recorded Factor A challenge appears in EV-02 for the colleague's registered device with a successful response.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "A public corporate directory attribute was used as a Factor B challenge.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "A recorded Factor A challenge has no corresponding entry in EV-02.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "EV-02 is missing where Factor A was recorded.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
-      ],
+      "relevance": "not_relevant",
+      "criteria": [],
       "exceptions": [],
-      "summary": "The sampled tickets show this criterion holds for the tickets in this evidence."
-    },
-    {
+      "summary": ""
+     },
+     {
       "step_reference": "0472-04",
-      "relevance": "contradicts",
-      "criteria": [
-        {
-          "criterion": "The verification timestamp is earlier than the reset execution timestamp.",
-          "kind": "acceptance",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Verification and reset were performed by the same agent ID.",
-          "kind": "acceptance",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The reset was executed before verification.",
-          "kind": "refusal",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The reset was executed without verification.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The reset was executed by an agent other than the one who verified.",
-          "kind": "refusal",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "EV-01 or EV-03 is missing for the sampled reset.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
-      ],
-      "exceptions": [
-        {
-          "item": "SD-105112",
-          "description": "Password reset executed at 08:04, one minute before the identity verification at 08:05, by agent AGT-0211 while AGT-0193 verified.",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1, table 'Sampled tickets', row SD-105112"
-          }
-        }
-      ],
-      "summary": "Ticket SD-105112 was reset before verification and by a different agent."
-    },
-    {
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
       "step_reference": "0472-05",
       "relevance": "supports",
       "criteria": [
-        {
-          "criterion": "No password reset was executed for the rejected request.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
+       {
+        "criterion": "No password reset was executed for the rejected request.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "attached email 'Approval: emergency password reset SD-105112'"
         },
-        {
-          "criterion": "A SEC incident was raised for the rejected request.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
+        "quote": ""
+       },
+       {
+        "criterion": "A SEC incident was raised for the rejected request.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "attached email 'Approval: emergency password reset SD-105112'"
         },
-        {
-          "criterion": "The SEC incident was raised within one hour of the attempt.",
-          "kind": "acceptance",
-          "status": "met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
+        "quote": ""
+       },
+       {
+        "criterion": "The SEC incident was raised within one hour of the attempt.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "attached email 'Approval: emergency password reset SD-105112'"
         },
-        {
-          "criterion": "A reset was executed despite failed verification.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
+        "quote": ""
+       },
+       {
+        "criterion": "A reset was executed despite failed verification.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "attached email 'Approval: emergency password reset SD-105112'"
         },
-        {
-          "criterion": "No SEC incident was raised.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
+        "quote": ""
+       },
+       {
+        "criterion": "No SEC incident was raised.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "attached email 'Approval: emergency password reset SD-105112'"
         },
-        {
-          "criterion": "The SEC incident was raised more than one hour after the attempt.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
+        "quote": ""
+       },
+       {
+        "criterion": "The SEC incident was raised more than one hour after the attempt.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "attached email 'Approval: emergency password reset SD-105112'"
         },
-        {
-          "criterion": "EV-04 is missing for a rejected request.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
+        "quote": ""
+       },
+       {
+        "criterion": "EV-04 is missing for a rejected request.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "attached email 'Approval: emergency password reset SD-105112'"
+        },
+        "quote": ""
+       }
       ],
       "exceptions": [],
-      "summary": "The sampled tickets show this criterion holds for the tickets in this evidence."
-    },
-    {
+      "summary": "The emergency reset was approved in writing by the Head of IAM Operations."
+     },
+     {
       "step_reference": "0473-01",
-      "relevance": "partly",
-      "criteria": [
-        {
-          "criterion": "Temporary password length is at least 12 characters.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Complexity settings match Password Baseline BL-SEC-012.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Generation is system-performed with no agent override available.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Length is below 12 characters.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Complexity deviates from BL-SEC-012.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "An agent-editable password field is present.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "EV-05 does not cover the full testing period.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
-      ],
+      "relevance": "not_relevant",
+      "criteria": [],
       "exceptions": [],
-      "summary": "Some tickets are covered; the evidence does not show all sampled items."
-    },
-    {
+      "summary": ""
+     },
+     {
       "step_reference": "0473-02",
-      "relevance": "partly",
-      "criteria": [
-        {
-          "criterion": "The configured validity does not exceed 60 minutes.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "For every sampled reset, the expiry timestamp is no more than 60 minutes after generation.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The configured validity is above 60 minutes.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Any sampled item has an expiry beyond 60 minutes after generation.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "EV-05 or EV-03 is missing.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
-      ],
+      "relevance": "not_relevant",
+      "criteria": [],
       "exceptions": [],
-      "summary": "Some tickets are covered; the evidence does not show all sampled items."
-    },
-    {
+      "summary": ""
+     },
+     {
       "step_reference": "0473-03",
-      "relevance": "partly",
-      "criteria": [
-        {
-          "criterion": "The 'User must change password at next logon' flag is set for every sampled account at the time of reset.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The flag is not set.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The flag was removed before first logon.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "EV-03 does not contain the sampled reset.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
-      ],
+      "relevance": "not_relevant",
+      "criteria": [],
       "exceptions": [],
-      "summary": "Some tickets are covered; the evidence does not show all sampled items."
-    },
-    {
+      "summary": ""
+     },
+     {
       "step_reference": "0473-04",
-      "relevance": "partly",
-      "criteria": [
-        {
-          "criterion": "The temporary password authenticates at most once.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Any subsequent authentication attempt with the same credential is rejected, or the credential is shown as invalidated.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "More than one successful authentication with the same temporary password.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "EV-03 does not contain first-use events for the sampled reset.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
-      ],
+      "relevance": "not_relevant",
+      "criteria": [],
       "exceptions": [],
-      "summary": "Some tickets are covered; the evidence does not show all sampled items."
-    },
-    {
+      "summary": ""
+     },
+     {
       "step_reference": "0473-05",
-      "relevance": "partly",
-      "criteria": [
-        {
-          "criterion": "Delivery was made to the colleague's registered mobile number, or via secure link to the line manager where no mobile number is registered.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "There is no evidence of delivery by e-mail, chat or verbal communication.",
-          "kind": "acceptance",
-          "status": "not_shown",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "Delivery was made to an unregistered number.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "The ticket indicates the password was read out, or sent by e-mail or chat.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        },
-        {
-          "criterion": "EV-06 has no delivery record for the sampled reset.",
-          "kind": "refusal",
-          "status": "not_met",
-          "reference": {
-            "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
-            "location": "page 1"
-          },
-          "quote": ""
-        }
-      ],
+      "relevance": "not_relevant",
+      "criteria": [],
       "exceptions": [],
-      "summary": "Some tickets are covered; the evidence does not show all sampled items."
-    },
-    {
+      "summary": ""
+     },
+     {
       "step_reference": "0474-01",
       "relevance": "not_relevant",
       "criteria": [],
       "exceptions": [],
       "summary": ""
-    },
-    {
+     },
+     {
       "step_reference": "0474-02",
       "relevance": "not_relevant",
       "criteria": [],
       "exceptions": [],
       "summary": ""
-    },
-    {
+     },
+     {
       "step_reference": "0474-03",
       "relevance": "not_relevant",
       "criteria": [],
       "exceptions": [],
       "summary": ""
-    },
-    {
+     },
+     {
       "step_reference": "0474-04",
       "relevance": "not_relevant",
       "criteria": [],
       "exceptions": [],
       "summary": ""
-    },
-    {
+     },
+     {
       "step_reference": "0474-05",
       "relevance": "not_relevant",
       "criteria": [],
       "exceptions": [],
       "summary": ""
-    },
-    {
+     },
+     {
       "step_reference": "DERIVED-01",
-      "relevance": "not_relevant",
-      "criteria": [],
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "The caller was challenged on employee number, cost centre code and line manager name.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "email body"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "All three attributes were answered correctly.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "email body"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Fewer than three attributes were challenged.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "email body"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "An attribute other than employee number, cost centre code or line manager name was used.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "email body"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Any attribute was answered incorrectly and Factor B was still recorded as passed.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-04_evidence_email_SAMPLE.msg.md",
+         "location": "email body"
+        },
+        "quote": ""
+       }
+      ],
       "exceptions": [],
-      "summary": ""
-    },
-    {
+      "summary": "The email confirms the Verify-ID attributes used."
+     },
+     {
       "step_reference": "DERIVED-02",
       "relevance": "not_relevant",
       "criteria": [],
       "exceptions": [],
       "summary": ""
-    }
+     }
+    ]
+   }
+  },
+  {
+   "regex": "Evidence: [^\\n]*EV-01",
+   "answer": {
+    "findings": [
+     {
+      "step_reference": "0472-01",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "The Identity Verification section is present on the ticket.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, table 'Sampled tickets'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The section names the verification factors used.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, table 'Sampled tickets'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The section records the verification outcome.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, table 'Sampled tickets'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The section records the verification timestamp.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, table 'Sampled tickets'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The section records the acting agent.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, table 'Sampled tickets'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The Identity Verification section is absent or blank.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, table 'Sampled tickets'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Any of the four required fields (factors, outcome, timestamp, acting agent) is missing.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, table 'Sampled tickets'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The EV-01 ticket export for the sampled reset is not provided.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, table 'Sampled tickets'"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "All three sampled tickets record the identity verification."
+     },
+     {
+      "step_reference": "0472-02",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "At least two of the three approved factors (A push challenge, B record challenge, C visual confirmation) are recorded.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, column 'Verification factors'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Every recorded factor shows a successfully completed outcome.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, column 'Verification factors'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Fewer than two factors are recorded.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, column 'Verification factors'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "A recorded factor shows a failed or partial outcome.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, column 'Verification factors'"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-01 is missing for the sampled reset.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, column 'Verification factors'"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "Two of three tickets show two factors; SD-105112 shows one factor but used an approved emergency route."
+     },
+     {
+      "step_reference": "0472-03",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "Every Factor B attribute is drawn from the Verify-ID record.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "No Factor B attribute is available in the public corporate directory.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Every recorded Factor A challenge appears in EV-02 for the colleague's registered device with a successful response.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "A public corporate directory attribute was used as a Factor B challenge.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "A recorded Factor A challenge has no corresponding entry in EV-02.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-02 is missing where Factor A was recorded.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "Only approved factors are recorded."
+     },
+     {
+      "step_reference": "0472-04",
+      "relevance": "contradicts",
+      "criteria": [
+       {
+        "criterion": "The verification timestamp is earlier than the reset execution timestamp.",
+        "kind": "acceptance",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, row SD-105112"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Verification and reset were performed by the same agent ID.",
+        "kind": "acceptance",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, row SD-105112"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The reset was executed before verification.",
+        "kind": "refusal",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, row SD-105112"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The reset was executed without verification.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, row SD-105112"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The reset was executed by an agent other than the one who verified.",
+        "kind": "refusal",
+        "status": "met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, row SD-105112"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-01 or EV-03 is missing for the sampled reset.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, row SD-105112"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [
+       {
+        "item": "SD-105112",
+        "description": "Reset executed at 08:04, one minute before the identity verification at 08:05, by agent AGT-0211 while AGT-0193 verified.",
+        "reference": {
+         "document": "EV-01_password_reset_tickets_SAMPLE.pdf",
+         "location": "page 1, table 'Sampled tickets', row SD-105112"
+        }
+       }
+      ],
+      "summary": "SD-105112 was reset before verification and by a different agent."
+     },
+     {
+      "step_reference": "0472-05",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-01",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-02",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-03",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-04",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-05",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-01",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-02",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-03",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-04",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-05",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "DERIVED-01",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "DERIVED-02",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     }
+    ]
+   }
+  },
+  {
+   "regex": "Evidence: [^\\n]*EV-03",
+   "answer": {
+    "findings": [
+     {
+      "step_reference": "0472-01",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0472-02",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0472-03",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0472-04",
+      "relevance": "contradicts",
+      "criteria": [
+       {
+        "criterion": "The verification timestamp is earlier than the reset execution timestamp.",
+        "kind": "acceptance",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" row 10"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Verification and reset were performed by the same agent ID.",
+        "kind": "acceptance",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" row 10"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The reset was executed before verification.",
+        "kind": "refusal",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" row 10"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The reset was executed without verification.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" row 10"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The reset was executed by an agent other than the one who verified.",
+        "kind": "refusal",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" row 10"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-01 or EV-03 is missing for the sampled reset.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" row 10"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [
+       {
+        "item": "SD-104422",
+        "description": "Audit log shows the reset at 11:07, one minute before verification at 11:08, executed by AGT-0211 after AGT-0222 verified; row marked red by the preparer.",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" row 10, columns H-K"
+        }
+       }
+      ],
+      "summary": "The audit log shows another reset executed before verification (SD-104422), marked red."
+     },
+     {
+      "step_reference": "0472-05",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-01",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-02",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-03",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-04",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-05",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-01",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "The reconciliation was completed on or before the 10th working day following month end.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The reconciliation was approved on or before the 10th working day following month end.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Completion after the 10th working day following month end.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Approval after the 10th working day following month end.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "No completion or approval date is evidenced.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-07 or EV-10 is missing for a month.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "Every reset in the period is logged with ticket, verifier and executor."
+     },
+     {
+      "step_reference": "0474-02",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "Record counts agree, or differences are explained and supported within the workbook.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The extract period covers the full month.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Counts differ with no supported explanation.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The extract period does not cover the full month.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\""
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "The population is complete for the quarter."
+     },
+     {
+      "step_reference": "0474-03",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "Every reset event in the month is either matched to an approved ticket with a completed Identity Verification section, or recorded as an exception.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 2"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Reset events are left unmatched and not recorded as exceptions.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 2"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Reset events are matched to tickets lacking a completed Identity Verification section.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 2"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "The reconciliation summary was prepared and reviewed."
+     },
+     {
+      "step_reference": "0474-04",
+      "relevance": "partly",
+      "criteria": [
+       {
+        "criterion": "Each exception was investigated and closed within five working days.",
+        "kind": "acceptance",
+        "status": "not_shown",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" column T"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Any exception confirmed as an unauthorised reset was escalated to the CISO office the same working day.",
+        "kind": "acceptance",
+        "status": "not_shown",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" column T"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "A SEC incident was raised the same working day for any confirmed unauthorised reset.",
+        "kind": "acceptance",
+        "status": "not_shown",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" column T"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "An exception is open beyond five working days without documented justification.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" column T"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "A confirmed unauthorised reset was not escalated the same working day.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" column T"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-08 is missing.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Reset events\" column T"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "Exceptions are marked with reviewer remarks, but no follow-up evidence is attached."
+     },
+     {
+      "step_reference": "0474-05",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "Approval was given by the IAM Operations Manager or a documented delegate.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 8"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The approver is a different person from the preparer.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 8"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The approval is dated on or after the date the workbook was completed.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 8"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Self-approval by the preparer.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 8"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Approval by a person other than the IAM Operations Manager or a documented delegate.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 8"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Approval dated before the workbook was completed.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 8"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-10 is missing for a month.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-03_ADX_audit_log_extract_SAMPLE.xlsx.md",
+         "location": "Sheet \"Summary\" row 8"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "Reviewed by an independent reviewer."
+     },
+     {
+      "step_reference": "DERIVED-01",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "DERIVED-02",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     }
+    ]
+   }
+  },
+  {
+   "regex": "Evidence: [^\\n]*EV-05",
+   "answer": {
+    "findings": [
+     {
+      "step_reference": "0472-01",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0472-02",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0472-03",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0472-04",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0472-05",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0473-01",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "Temporary password length is at least 12 characters.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Complexity settings match Password Baseline BL-SEC-012.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Generation is system-performed with no agent override available.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Length is below 12 characters.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Complexity deviates from BL-SEC-012.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "An agent-editable password field is present.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-05 does not cover the full testing period.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "Temporary passwords are generated with the required parameters."
+     },
+     {
+      "step_reference": "0473-02",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "The configured validity does not exceed 60 minutes.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "For every sampled reset, the expiry timestamp is no more than 60 minutes after generation.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The configured validity is above 60 minutes.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Any sampled item has an expiry beyond 60 minutes after generation.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-05 or EV-03 is missing.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "Temporary passwords expire within the validity window."
+     },
+     {
+      "step_reference": "0473-03",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "The 'User must change password at next logon' flag is set for every sampled account at the time of reset.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The flag is not set.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The flag was removed before first logon.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-03 does not contain the sampled reset.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "A change is forced at first logon."
+     },
+     {
+      "step_reference": "0473-04",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "The temporary password authenticates at most once.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Any subsequent authentication attempt with the same credential is rejected, or the credential is shown as invalidated.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "More than one successful authentication with the same temporary password.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-03 does not contain first-use events for the sampled reset.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "Each temporary password was used once."
+     },
+     {
+      "step_reference": "0473-05",
+      "relevance": "supports",
+      "criteria": [
+       {
+        "criterion": "Delivery was made to the colleague's registered mobile number, or via secure link to the line manager where no mobile number is registered.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "There is no evidence of delivery by e-mail, chat or verbal communication.",
+        "kind": "acceptance",
+        "status": "met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "Delivery was made to an unregistered number.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "The ticket indicates the password was read out, or sent by e-mail or chat.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       },
+       {
+        "criterion": "EV-06 has no delivery record for the sampled reset.",
+        "kind": "refusal",
+        "status": "not_met",
+        "reference": {
+         "document": "EV-05_service_desk_log_export_SAMPLE.pdf",
+         "location": "page 1"
+        },
+        "quote": ""
+       }
+      ],
+      "exceptions": [],
+      "summary": "Temporary passwords were delivered through the approved channel."
+     },
+     {
+      "step_reference": "0474-01",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-02",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-03",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-04",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "0474-05",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "DERIVED-01",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     },
+     {
+      "step_reference": "DERIVED-02",
+      "relevance": "not_relevant",
+      "criteria": [],
+      "exceptions": [],
+      "summary": ""
+     }
+    ]
+   }
+  }
+ ],
+ "_default": {
+  "findings": [
+   {
+    "step_reference": "0472-01",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0472-02",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0472-03",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0472-04",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0472-05",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0473-01",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0473-02",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0473-03",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0473-04",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0473-05",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0474-01",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0474-02",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0474-03",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0474-04",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "0474-05",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "DERIVED-01",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   },
+   {
+    "step_reference": "DERIVED-02",
+    "relevance": "not_relevant",
+    "criteria": [],
+    "exceptions": [],
+    "summary": ""
+   }
   ]
+ }
 }

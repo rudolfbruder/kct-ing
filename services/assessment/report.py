@@ -3,6 +3,8 @@
     pdf_bytes = AssessmentReport(assessment, interpretation).build()
 
 Contents:
+    0. Executive summary (page 1): verdict counts, run figures, the traceability matrix
+       (test steps x evidence files) and the key exceptions
     1. Header: case, assessment ID, interpretation, model, dates, evidence parts
     2. Summary: one line per test step with its verdict (and "no evidence" / "fallback")
     3. Per test step: description, criteria, verdict, reason, exceptions, references
@@ -29,6 +31,13 @@ from services.control_testing.data import CaseInterpretation
 GREEN = "#1E7B34"
 RED = "#B42318"
 GREY = "#6B7280"
+AMBER = "#B45309"
+BLUE = "#1D4ED8"
+
+
+def _duration(seconds: float) -> str:
+    minutes, rest = divmod(int(round(seconds)), 60)
+    return f"{minutes} min {rest} s" if minutes else f"{rest} s"
 
 
 def _ref(reference: Reference) -> str:
@@ -57,7 +66,7 @@ class AssessmentReport:
         self.width = A4[0] - 4 * cm
         meta = self.assessment.metadata
 
-        story = self._header() + self._summary() + [PageBreak()]
+        story = self._executive() + [PageBreak()] + self._header() + self._summary() + [PageBreak()]
         for verdict in self.assessment.verdicts:
             story += self._step(verdict)
         story += [PageBreak()] + self._evidence() + self._appendix()
@@ -73,6 +82,83 @@ class AssessmentReport:
         return buffer.getvalue()
 
     # --- sections ----------------------------------------------------------------------
+
+    def _executive(self) -> list:
+        from services.assessment.matrix import Matrix, traceability
+
+        meta = self.assessment.metadata
+        verdicts = self.assessment.verdicts
+        effective = sum(v.verdict == "effective" for v in verdicts)
+        no_evidence = sum(v.no_evidence for v in verdicts)
+        title = self.case_name or meta.case_reference
+        story = [self.Paragraph("Control test assessment", self.styles["title"]),
+                 self._p(title, "subtitle"), self._space(0.3)]
+
+        kpis = [(str(effective), "effective", GREEN), (str(len(verdicts) - effective), "not effective", RED),
+                (str(no_evidence), "without evidence", AMBER), (str(meta.evidence_files or len({p.unit for p in self.assessment.parts})),
+                                                                 "evidence files", self.brand.navy)]
+        cells = [[self.Paragraph(f"<font size=22 color='{color}'><b>{number}</b></font><br/>"
+                                 f"<font size=8 color='{GREY}'>{escape(label)}</font>", self.styles["kpi"])
+                  for number, label, color in kpis]]
+        box = self.Table(cells, colWidths=[self.width / 4] * 4, rowHeights=[1.9 * 28.35])
+        box.setStyle(self.TableStyle([("BOX", (0, 0), (-1, -1), 0.4, self.colors.HexColor("#D1D5DB")),
+                                      ("INNERGRID", (0, 0), (-1, -1), 0.4, self.colors.HexColor("#D1D5DB")),
+                                      ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+        story += [box, self._space(0.25)]
+
+        facts = [f"{len(verdicts)} test steps", f"{meta.parts_total} evidence part(s) assessed"
+                 + (f", {meta.parts_failed} failed" if meta.parts_failed else "")]
+        if meta.duration_seconds is not None:
+            facts.append(f"run time {_duration(meta.duration_seconds)}")
+        if meta.input_tokens or meta.output_tokens:
+            facts.append(f"{meta.input_tokens + meta.output_tokens:,} tokens")
+        if meta.estimated_cost is not None:
+            from services.config import settings
+
+            facts.append(f"cost {meta.estimated_cost:.2f} {settings().price_currency}")
+        facts.append(f"model {meta.model}")
+        story += [self._p(" · ".join(facts), "muted"), self._space(0.35)]
+
+        matrix = traceability(self.assessment)
+        if matrix.units:
+            story += [self.Paragraph("Traceability: what each evidence file shows per test step", self.styles["h2"])]
+            header = [self._p("Step", "bold"), self._p("Verdict", "bold")] + \
+                [self._p(Matrix.short(u), "matrixhead") for u in matrix.units]
+            rows, style = [header], []
+            symbols = {"supports": ("+", "#DCFCE7"), "contradicts": ("–", "#FEE2E2"), "partly": ("~", "#FEF3C7"),
+                       "not_relevant": ("", "#FFFFFF"), "failed": ("?", "#E5E7EB")}
+            for r_index, row in enumerate(matrix.rows, start=1):
+                label = "EFFECTIVE" if row.verdict == "effective" else ("NO EVIDENCE" if row.no_evidence else "NOT EFFECTIVE")
+                color = GREEN if row.verdict == "effective" else (AMBER if row.no_evidence else RED)
+                line = [self._p(row.step_reference, "small_dark"),
+                        self.Paragraph(f"<font color='{color}'><b>{label}</b></font>", self.styles["tiny"])]
+                for c_index, unit in enumerate(matrix.units, start=2):
+                    symbol, fill = symbols[row.cells[unit]]
+                    line.append(self._p(symbol, "matrixcell"))
+                    style.append(("BACKGROUND", (c_index, r_index), (c_index, r_index), self.colors.HexColor(fill)))
+                rows.append(line)
+            unit_width = min(2.2 * 28.35, (self.width - 2.4 * 28.35 - 3.0 * 28.35) / len(matrix.units))
+            table = self.Table(rows, colWidths=[2.4 * 28.35, 3.0 * 28.35] + [unit_width] * len(matrix.units),
+                               repeatRows=1)
+            table.setStyle(self.TableStyle([("GRID", (0, 0), (-1, -1), 0.4, self.colors.HexColor("#D1D5DB")),
+                                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                                            ("BACKGROUND", (0, 0), (-1, 0), self.colors.HexColor(self.brand.orange_tint)),
+                                            ("TOPPADDING", (0, 0), (-1, -1), 1.5),
+                                            ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5)] + style))
+            legend = "+ supports   – contradicts   ~ partly   (empty) not relevant   ? could not be assessed"
+            columns = " · ".join(f"{Matrix.short(u)} = {u}" for u in matrix.units)
+            story += [table, self._space(0.1), self._p(legend, "small"), self._p(columns, "small"), self._space(0.3)]
+
+        exceptions = [(v.step_reference, e) for v in verdicts for e in v.exceptions]
+        if exceptions:
+            story.append(self.Paragraph("Key exceptions", self.styles["h2"]))
+            for step, e in exceptions[:6]:
+                where = f" ({_ref(e.reference)})" if e.reference else ""
+                story.append(self._p(f"<b>{escape(e.item)}</b> · step {escape(step)}: {escape(e.description)}"
+                                     f"<font color='{GREY}'>{where}</font>", escaped=True))
+            if len(exceptions) > 6:
+                story.append(self._p(f"… and {len(exceptions) - 6} more; see the test steps.", "muted"))
+        return story
 
     def _header(self) -> list:
         meta = self.assessment.metadata
@@ -198,6 +284,15 @@ class AssessmentReport:
             "flag": ParagraphStyle("f", parent=base["BodyText"], fontName=b, fontSize=9, leading=12, textColor=RED),
             "verdict": ParagraphStyle("v", parent=base["BodyText"], fontName=b, fontSize=9, leading=12),
             "verdict_big": ParagraphStyle("vb", parent=base["BodyText"], fontName=b, fontSize=11, leading=15),
+            "subtitle": ParagraphStyle("st", parent=base["BodyText"], fontName=f, fontSize=12, leading=15,
+                                       alignment=1, textColor=GREY),
+            "kpi": ParagraphStyle("k", parent=base["BodyText"], fontName=f, alignment=1, leading=24),
+            "tiny": ParagraphStyle("ti", parent=base["BodyText"], fontName=f, fontSize=7, leading=8.5),
+            "small_dark": ParagraphStyle("sd", parent=base["BodyText"], fontName=f, fontSize=8, leading=9.5),
+            "matrixhead": ParagraphStyle("mh", parent=base["BodyText"], fontName=b, fontSize=7.5, leading=9,
+                                         alignment=1),
+            "matrixcell": ParagraphStyle("mc", parent=base["BodyText"], fontName=b, fontSize=10, leading=11,
+                                         alignment=1),
         }
 
     def _p(self, text, style: str = "body", escaped: bool = False):

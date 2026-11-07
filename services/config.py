@@ -10,6 +10,7 @@ BASE = Path(__file__).resolve().parent.parent
 
 DEFAULT_MODELS = {
     "fake": "fake",
+    "replay": "replay",
     "gemini": "gemini-2.5-pro",
     "anthropic": "claude-opus-5-5",
 }
@@ -27,6 +28,10 @@ class Settings:
     steps_max_tokens: int
     assessment_max_tokens: int   # per evidence part
     verdict_max_tokens: int      # the final verdict call
+    # Prices per million tokens, for the cost shown per assessment (0 = no cost shown).
+    price_input_per_mtok: float
+    price_output_per_mtok: float
+    price_currency: str
 
     # Google Cloud (Gemini, and Claude when anthropic_platform is "vertex")
     gcp_project: str
@@ -62,6 +67,10 @@ class Settings:
     brand_logo: Path
     prompts_root: Path
     fixtures_root: Path
+    # Record real answers (KCT_AI_RECORD=<name>) and replay them (KCT_AI_PROVIDER=replay, KCT_AI_REPLAY=<name>).
+    ai_record: str
+    ai_replay: str
+    recordings_root: Path
 
     @property
     def logs_dir(self) -> Path:
@@ -110,6 +119,9 @@ def settings() -> Settings:
         steps_max_tokens=int(os.environ.get("KCT_STEPS_MAX_TOKENS", "32768")),
         assessment_max_tokens=int(os.environ.get("KCT_ASSESSMENT_MAX_TOKENS", "32768")),
         verdict_max_tokens=int(os.environ.get("KCT_VERDICT_MAX_TOKENS", "32768")),
+        price_input_per_mtok=float(os.environ.get("KCT_PRICE_INPUT_PER_MTOK", "0")),
+        price_output_per_mtok=float(os.environ.get("KCT_PRICE_OUTPUT_PER_MTOK", "0")),
+        price_currency=os.environ.get("KCT_PRICE_CURRENCY", "USD"),
         gcp_project=os.environ.get("KCT_PROJECT_ID", ""),
         gemini_location=os.environ.get("KCT_LOCATION", "europe-west4"),
         anthropic_platform=os.environ.get("KCT_ANTHROPIC_PLATFORM", "vertex").lower(),
@@ -134,4 +146,7 @@ def settings() -> Settings:
         brand_logo=Path(os.environ.get("KCT_BRAND_LOGO", BASE / "branding" / "logo.png")),
         prompts_root=Path(os.environ.get("KCT_PROMPTS_ROOT", BASE / "prompts")),
         fixtures_root=Path(os.environ.get("KCT_FIXTURES_ROOT", BASE / "tests" / "fixtures" / "fake_ai")),
+        ai_record=os.environ.get("KCT_AI_RECORD", ""),
+        ai_replay=os.environ.get("KCT_AI_REPLAY", "demo"),
+        recordings_root=Path(os.environ.get("KCT_RECORDINGS_ROOT", BASE / "demo" / "recordings")),
     )

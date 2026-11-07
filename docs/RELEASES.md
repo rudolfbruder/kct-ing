@@ -15,3 +15,4 @@ Deliver them in order; mark a release "delivered" (with the date) once it is in 
 | 03 | `release/03-evidence-per-case` | `delivery-03` | Evidence per case: upload API, evidence units (email with its attachments), splitting large files (PDF pages/MB, Excel sheets/rows); notebook 10 | prepared |
 | 04 | `release/04-assessment` | `delivery-04` | Assessment: one AI call per evidence part, reference checks, combined verdict per test step, background API, run history, read-only PDF report in ING colours with the ING logo slot; notebook 11 | prepared |
 | 05 | `release/05-sharepoint-import` | `delivery-05` | Import a control from SharePoint as a ZIP or synced folder; AI sorts control details, test plan, evidence; ZIP kept with import.json; notebook 12 | prepared |
+| 06 | `release/06-demo` | `delivery-06` | Management demo: DEMO.ipynb, OVERVIEW.md, traceability matrix, executive PDF page, run metrics, record & replay of real AI answers; dashboard in ING style | prepared |

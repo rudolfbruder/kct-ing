@@ -17,6 +17,10 @@ The process, in the words used everywhere in this project (code, logs, docs):
 (Earlier versions called the interpretation "Stage 1 + 2" and the assessment
 "Stage 3".)
 
+> **For management and demos:** start with [`OVERVIEW.md`](OVERVIEW.md) (what it is, how it
+> works, guardrails, status) and [`DEMO.ipynb`](DEMO.ipynb) (the whole story in 10 steps, with
+> presenter notes; see [`demo/README.md`](demo/README.md) for the replay of real AI answers).
+
 ## Demo: the notebooks in order
 
 Open the notebooks in `notebooks/` and run them by number (Run All in each).
@@ -324,6 +328,7 @@ Set `KCT_AI_PROVIDER`; every agent then runs on that provider. Nothing else chan
 | `gemini` (default) | Gemini on Vertex AI | `KCT_PROJECT_ID`, `google-genai` |
 | `anthropic` | Claude on Vertex AI (`KCT_ANTHROPIC_PLATFORM=vertex`) or the Anthropic API (`api`) | `KCT_PROJECT_ID` or `ANTHROPIC_API_KEY`, `anthropic[vertex]` |
 | `fake` | Fixture files in `tests/fixtures/fake_ai/` | nothing |
+| `replay` | Real answers recorded earlier with `KCT_AI_RECORD=<name>`, from `demo/recordings/<name>/` (`KCT_AI_REPLAY`) | a recording |
 
 `KCT_AI_MODEL` picks the model, for example `gemini-2.5-pro`, `claude-opus-5-5`
 or `claude-sonnet-5-5`. Which Claude models your project can use depends on
@@ -368,6 +373,9 @@ too low fails the same way.
 | `KCT_IMPORT_ROOT` | | Folder the API may import control folders from (`POST /cases/import`); empty = off |
 | `KCT_ZIP_MAX_MB` | `2048` | Largest unpacked size of an uploaded ZIP |
 | `KCT_ZIP_MAX_FILES` | `5000` | Most files in an uploaded ZIP |
+| `KCT_PRICE_INPUT_PER_MTOK`, `KCT_PRICE_OUTPUT_PER_MTOK`, `KCT_PRICE_CURRENCY` | `0`, `0`, `USD` | Prices per million tokens, to show each assessment's cost; take them from the Vertex AI pricing page |
+| `KCT_AI_RECORD` | | Save every real answer under `demo/recordings/<name>/` |
+| `KCT_AI_REPLAY` | `demo` | Recording used by `KCT_AI_PROVIDER=replay` |
 | `KCT_PDF_MAX_PAGES` | `50` | Evidence PDFs with more pages are split into parts |
 | `KCT_PDF_MAX_MB` | `20` | Evidence PDFs (or parts) bigger than this are split further |
 | `KCT_PDF_OVERLAP_PAGES` | `2` | Pages repeated at each cut, so nothing is lost at a page break |
@@ -983,7 +991,9 @@ curl -o report.pdf http://localhost:8000/api/v1/assessments/<id>/report.pdf
 From Python: `kct.assessments.assess("case-002", progress=print)` runs and
 waits; `start()` + `run()` are what the API does.
 
-**Report.** Header (case, run, interpretation, model, dates, parts), summary
+**Report.** Page 1 is an executive summary: verdict counts, run figures (time, tokens, cost), the
+traceability matrix (test steps x evidence files: supports, contradicts, partly) and the key
+exceptions. Then the header (case, run, interpretation, model, dates, parts), summary
 table, then per test step its criteria, verdict, reason, exceptions and
 evidence references; the evidence files with their SHA-256; an appendix with
 the findings per part and every reference problem. The PDF has the "no
@@ -1104,7 +1114,9 @@ services/
     agents/                     EvidenceAssessmentAgent (per part), VerdictAgent (combine)
     data.py                     Answers (EvidenceFindings, VerdictList) and stored data (Assessment, ...)
     references.py               ReferenceChecker: cited document/page/row must exist in what was sent
-    report.py                   AssessmentReport: the read-only PDF
+    report.py                   AssessmentReport: the read-only PDF (page 1: executive summary)
+    matrix.py                   Traceability matrix: test steps x evidence files
+  presentation/notebook.py      Visual blocks for notebooks (KPIs, matrix, cards, progress)
   evidences/
     evidence_service.py         EvidenceService: evidence per case, upload, units, converter choice, parts
     units.py                    EvidenceUnit: one uploaded file (an email with its attachments); what counts as evidence
@@ -1132,6 +1144,9 @@ services/
     agents/                     One file per agent, e.g. test_steps_agent.py
     data.py                     TestStep, CaseInterpretation and other data shapes
 scripts/test_steps.py           Print test steps of a case interpretation
+DEMO.ipynb                      The management demo: 10 steps, presenter notes
+OVERVIEW.md                     Two pages for management: what, how, guardrails, status
+demo/                           Demo notes and recorded AI answers for replay
 factories/                      DocxFactory, ExcelFactory, MsgFactory, PdfFactory, ControlFolderFactory: fake evidence and control folders
 scripts/make_sample_evidence.py Write the fake evidence files with the factories
 notebooks/                      Demo notebooks, run them in order:

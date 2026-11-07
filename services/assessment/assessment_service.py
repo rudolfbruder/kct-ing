@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Callable, List, Optional
@@ -122,6 +123,8 @@ class AssessmentService:
     # --- the run -----------------------------------------------------------------------
 
     def _run(self, metadata: AssessmentMetadata, say) -> None:
+        started = time.monotonic()
+        self._verdict_usage = (0, 0)
         case = metadata.case_reference
         interpretation = self.database.find_interpretation(metadata.case_interpretation_id)
         steps = interpretation.test_steps
@@ -175,12 +178,24 @@ class AssessmentService:
         verdicts = self._verdicts(steps, assessed)
         self.database.save_verdicts(metadata.assessment_id, verdicts)
 
+        input_tokens = sum(p.input_tokens for p in assessed) + self._verdict_usage[0]
+        output_tokens = sum(p.output_tokens for p in assessed) + self._verdict_usage[1]
+        config = settings()
+        cost = None
+        if config.price_input_per_mtok or config.price_output_per_mtok:
+            cost = round((input_tokens * config.price_input_per_mtok + output_tokens * config.price_output_per_mtok)
+                         / 1_000_000, 4)
+        figures = dict(evidence_files=len(units), input_tokens=input_tokens, output_tokens=output_tokens,
+                       duration_seconds=round(time.monotonic() - started, 1), estimated_cost=cost)
+        self.database.update_assessment(metadata.assessment_id, **figures)
+
         result = self.database.find_assessment(metadata.assessment_id)
         result.metadata.finished_at = _now()
         pdf = AssessmentReport(result, interpretation, self.files.case_name(case)).build()
         path = self.files.save_output(case, f"assessment_{metadata.assessment_id}.pdf", pdf)
         self.database.update_assessment(metadata.assessment_id, status="completed", finished_at=result.metadata.finished_at,
-                                        report_path=path, report_sha256=_sha256(pdf))
+                                        report_path=path, report_sha256=_sha256(pdf),
+                                        duration_seconds=round(time.monotonic() - started, 1))
         effective = sum(v.verdict == "effective" for v in verdicts)
         say(f"✅ {effective} effective, {len(verdicts) - effective} not effective; report: {path}")
         log.info("%s: assessment %s completed: %d effective, %d not effective, %d part(s) failed",
@@ -193,7 +208,9 @@ class AssessmentService:
                       "None of the evidence could be assessed (see the failed parts).")
             return [_fallback(s, reason, no_evidence=not parts) for s in steps]
 
-        answer = VerdictAgent().prompt(_verdict_prompt(steps, parts)).structured
+        response = VerdictAgent().prompt(_verdict_prompt(steps, parts))
+        self._verdict_usage = (response.usage.input_tokens, response.usage.output_tokens)
+        answer = response.structured
         by_reference = {v.step_reference: v for v in answer.verdicts}
         checker = ReferenceChecker([d for p in self._sent_documents for d in p])
         verdicts = []
