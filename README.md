@@ -10,7 +10,7 @@ The process, in the words used everywhere in this project (code, logs, docs):
 |---|---|---|
 | **Case** | Upload the control details and test plan PDFs; stored as `case-NNN` | done |
 | **Interpretation** | Summarize both documents and turn them into test steps with acceptance and refusal criteria (JSON) | done |
-| **Evidence** | Convert evidence files (Word, Excel, Outlook emails, PDF, images) for the AI | done |
+| **Evidence** | Upload evidence files per case (Word, Excel, Outlook emails, PDF, images), convert them for the AI and split big ones into parts | done |
 
 (Earlier versions called the interpretation "Stage 1 + 2".)
 
@@ -33,6 +33,7 @@ says otherwise.
 | 07 | `07_evidence_word_to_pdf.ipynb` | Word evidence to PDF, so the AI can read it |
 | 08 | `08_evidence_excel.ipynb` | Excel evidence to text with Excel coordinates, colors and comments, plus pictures |
 | 09 | `09_evidence_email.ipynb` | Outlook emails (.msg) to text; their Word, Excel and email attachments converted too |
+| 10 | `10_evidence_case.ipynb` | Evidence of one case: upload, convert, split into the parts the assessment will send (calls and tokens) |
 
 ## Ways to run it
 
@@ -200,6 +201,7 @@ What to install in ING, and what not:
 | `python-docx`, `reportlab` | `07_evidence_word_to_pdf.ipynb` (.docx to PDF) | Yes, if missing (pure pip, no LibreOffice needed) |
 | `openpyxl` | `08_evidence_excel.ipynb` (Excel to text) | Yes, if missing |
 | `extract-msg` | `09_evidence_email.ipynb` (.msg emails). GPL-3.0 | Yes, if missing; check the license with ING first |
+| `pypdf` | Splitting large evidence PDFs | Yes, if missing |
 | `fastapi`, `uvicorn`, `python-multipart` | Only the API | Only if you run the API |
 | `anthropic[vertex]` | Only Claude | Only if you use Claude |
 | `google-cloud-storage`, `google-cloud-bigquery` | Only `gcs` / `bigquery` drivers | Not now (no storage approved) |
@@ -210,7 +212,7 @@ What to install in ING, and what not:
 
    ```bash
    pip list | grep -i -E "pydantic|google-genai|pandas|fastapi|uvicorn|multipart"
-   pip install --user google-genai pydantic python-docx reportlab openpyxl extract-msg   # notebooks
+   pip install --user google-genai pydantic python-docx reportlab openpyxl extract-msg pypdf   # notebooks
    pip install --user fastapi uvicorn python-multipart   # only for the API
    ```
 
@@ -356,6 +358,10 @@ too low fails the same way.
 | `KCT_BQ_DATASET` | | BigQuery dataset: `dataset` (in `KCT_PROJECT_ID`) or `project.dataset` |
 | `KCT_BQ_LOCATION` | | Dataset location, e.g. `EU` or `europe-west4`. Empty = BigQuery decides |
 | `KCT_EVIDENCES_ROOT` | `<storage>/evidences` | Evidence documents (assessment). Any folder layout below it |
+| `KCT_PDF_MAX_PAGES` | `50` | Evidence PDFs with more pages are split into parts |
+| `KCT_PDF_MAX_MB` | `20` | Evidence PDFs (or parts) bigger than this are split further |
+| `KCT_PDF_OVERLAP_PAGES` | `2` | Pages repeated at each cut, so nothing is lost at a page break |
+| `KCT_EVIDENCE_MAX_TOKENS` | `300000` | Estimated tokens per part; bigger evidence is split |
 | `KCT_STORAGE_ROOT` | `./storage` | Logs; also uploads, outputs and the SQLite file when those are local |
 | `KCT_PROMPTS_ROOT` | `./prompts` | Agent instructions |
 | `KCT_FIXTURES_ROOT` | `./tests/fixtures/fake_ai` | Fake mode answers |
@@ -414,6 +420,9 @@ Notebooks in `notebooks/`:
   email as text (header, body with lists, red text and inline images) and its
   attachments through the Word, Excel and email converters. Can create a fake
   evidence email first. See "Email evidence".
+- `10_evidence_case.ipynb`: puts evidence into a case's folder and shows
+  how it is converted and split into parts, one per future AI call, with
+  token estimates. See "Evidence of a case".
 - `03_sqlite_test.ipynb`: checks SQLite works on the machine. Creates
   `storage/sqlite_test.sqlite`, writes three records and shows them. Needs
   only Python; does not touch the app's database.
@@ -770,6 +779,52 @@ light red exception rows and red text, reviewer comments, a hidden column and
 row, a two-level merged header, a form-style summary with formulas and
 conditional formatting, and a pasted screenshot.
 
+### Evidence of a case
+
+Evidence belongs to a case and lives in `storage/evidences/<case>/`, with any
+subfolders below. Upload it through the API or drop files into the folder.
+
+| Method and path | Does |
+|---|---|
+| `POST /cases/{case_id}/evidences` | Upload: multipart field `files` (repeat for more), optional form field `folder` for a subfolder. Same name replaces the earlier file (`"replaced": true`) |
+| `GET /cases/{case_id}/evidences` | The uploaded files: path, kind, size, date |
+| `GET /cases/{case_id}/evidences/parts` | Converts and splits everything, and lists the parts the assessment will send, with estimated tokens |
+
+```bash
+curl -F files=@EV-01.docx -F files=@EV-03.xlsx -F folder=q1 \
+     http://localhost:8000/api/v1/cases/case-002/evidences
+curl http://localhost:8000/api/v1/cases/case-002/evidences/parts
+```
+
+Accepted: `.docx`, `.xlsx`, `.xlsm`, `.msg`, `.pdf`, `.png`, `.jpg`,
+`.jpeg`, `.gif`, `.webp`, `.txt`, `.csv`. Anything else is refused (400), as
+are empty files; unknown cases give 404. File and folder names are cleaned, so
+an upload can never leave the case's folder.
+
+**Units and parts.** Each uploaded file is one *unit*. An email is one unit
+together with its attachments, so the model sees the approval in the email
+next to the log attached to it. A unit that is too big for one call is split
+into *parts* (`EvidenceSplitter`, `services/evidences/evidence_splitter.py`):
+
+| Kind | Split |
+|---|---|
+| PDF (also Word, after conversion) | Over `KCT_PDF_MAX_PAGES` pages or `KCT_PDF_MAX_MB`: page ranges with `KCT_PDF_OVERLAP_PAGES` pages repeated at each cut; titles keep the real pages, e.g. `EV-05.pdf (pages 49-98 of 120)`. A range still too big in MB is halved |
+| Excel | By sheet, then by row blocks under `KCT_EVIDENCE_MAX_TOKENS`, with the workbook heading and table header repeated in every block; pictures go with their sheet |
+| Email | The email text goes with every part; attachments are packed into parts |
+| Text, images | Text by lines; images are never split |
+
+Small pieces are packed together, so a unit that fits is one part. Why 50
+pages when Gemini accepts far more: accuracy drops deep inside long
+documents, and the answer for all test steps must fit the output limit. Tune
+the limits after the first real runs.
+
+```python
+case = kct.evidences.case("case-002")
+case.store([UploadedFile(name="EV-01.docx", data=...)], folder="q1")
+case.units()      # one per uploaded file, converted
+case.parts()      # split, as the assessment will send them
+```
+
 ### Email evidence
 
 Evidence often arrives as Outlook emails (`.msg`): approvals, confirmations,
@@ -802,6 +857,7 @@ demos and tests, with made-up data for the sample case:
 |---|---|
 | `DocxFactory` | `EV-01_..._SAMPLE.docx`: headings, a list, a table, a screenshot |
 | `ExcelFactory(rows=100)` | `EV-03_..._SAMPLE.xlsx`: 4 sheets (one hidden), 20 columns, colored exception rows, comments, hidden parts, formulas, conditional formatting, a pasted screenshot |
+| `PdfFactory(pages=120)` | `EV-05_..._SAMPLE.pdf`: a long ticket log export, every 10th page with a screenshot; for trying out splitting |
 | `MsgFactory(history=2, images=1, links=True, attachments=True)` | `EV-04_..._SAMPLE.msg`: the newest reply in an evidence thread with `history` earlier emails quoted below it (Outlook From/Sent/To/Subject blocks), `images` inline screenshots spread over the thread (`image001.png`, ...), ServiceNow/portal/SharePoint links, and the Word file, an Excel extract and a forwarded approval email attached |
 
 ```python
@@ -883,6 +939,7 @@ routes/api.py                   Routes bound to controller methods
 controllers/
   test_steps_controller.py      Interpretation over HTTP (InterpretationService does the work)
   ask_controller.py             POST /ask smoke test
+  evidences_controller.py       Evidence of a case: upload, list, parts
   case_interpretations_controller.py  Read stored case interpretations
   summary_controller.py         One summary (part of the interpretation)
   cases_controller.py           Health, case listings
@@ -893,8 +950,9 @@ services/
   playground/ask_service.py     AskService: one question to the provider (smoke test)
   maintenance/cleanup_service.py  CleanupService: deletes demo and test leftovers, plan first
   evidences/
-    evidence_service.py         EvidenceService: finds evidence files, picks the converter, collects attachments
-    units.py                    What counts as evidence, and which files the converters made
+    evidence_service.py         EvidenceService: evidence per case, upload, units, converter choice, parts
+    units.py                    EvidenceUnit: one uploaded file (an email with its attachments); what counts as evidence
+    evidence_splitter.py        EvidenceSplitter: units into parts (PDF pages/MB, Excel sheets/rows, email)
     docx_converter.py           DocxConverter: Word to PDF (LibreOffice, or python-docx + reportlab)
     excel_converter.py          ExcelConverter: Excel to Markdown text + pictures (+ PDF with LibreOffice)
     msg_converter.py            MsgConverter: Outlook email to text; attachments through the other converters
@@ -918,7 +976,7 @@ services/
     agents/                     One file per agent, e.g. test_steps_agent.py
     data.py                     TestStep, CaseInterpretation and other data shapes
 scripts/test_steps.py           Print test steps of a case interpretation
-factories/                      DocxFactory, ExcelFactory, MsgFactory: fake evidence files
+factories/                      DocxFactory, ExcelFactory, MsgFactory, PdfFactory: fake evidence files
 scripts/make_sample_evidence.py Write the fake evidence files with the factories
 notebooks/                      Demo notebooks, run them in order:
   00_cleanup.ipynb              Clean slate (shows the list, deletes after CONFIRM)
@@ -931,6 +989,7 @@ notebooks/                      Demo notebooks, run them in order:
   07_evidence_word_to_pdf.ipynb Evidence .docx to PDF
   08_evidence_excel.ipynb       Evidence Excel to text + images for the AI
   09_evidence_email.ipynb       Outlook emails to text, attachments converted
+  10_evidence_case.ipynb        Evidence of a case: upload, convert, split into parts
 prompts/<agent name>.md         Each agent's instructions
 tests/fixtures/fake_ai/         Fake mode answers, one per agent
 kct.sh                          All setup and run commands without Docker

@@ -17,6 +17,8 @@ reportlab==5.1.0
 openpyxl==3.1.5
 # Evidence Outlook emails .msg (notebooks/09_evidence_email.ipynb). GPL-3.0 licensed.
 extract-msg==0.58.2
+# Splitting large evidence PDFs into parts
+pypdf==7.0.0
 
 # Only the storage you use needs to be installed:
 google-cloud-storage==3.9.0   # KCT_FILES_DRIVER=gcs

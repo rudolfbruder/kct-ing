@@ -1,5 +1,12 @@
 """EvidenceService: the evidence files the assessment will judge test steps against.
 
+Evidence belongs to a case: <KCT_EVIDENCES_ROOT>/<case>/... (any subfolders).
+
+    case = kct.evidences.case("case-002")      the evidence of one case
+    case.store([UploadedFile(...)])            save uploads (API: POST /cases/{case}/evidences)
+    case.units()                               one unit per uploaded file, converted for the AI
+    case.parts()                               units split into parts that fit the model
+
 Finds the files and decides which converter handles which file; the
 conversion itself is in DocxConverter (Word to PDF), ExcelConverter (Excel to
 text + pictures) and MsgConverter (Outlook email to text, attachments
@@ -19,19 +26,35 @@ here assumes one: files are found recursively and paths are relative to the root
 from __future__ import annotations
 
 import logging
-from pathlib import Path
+import re
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
 from typing import List, Optional, Union
 
 from services.ai.attachments import MIME_TYPES, Document
+from services.files.file_service import UploadedFile
+from services.evidences.evidence_splitter import EvidencePart, EvidenceSplitter
+from services.evidences.units import EVIDENCE_SUFFIXES, EvidenceUnit, document, evidence_kind, is_output
 from services.evidences.docx_converter import DocxConversion, DocxConverter
 from services.evidences.excel_converter import EXCEL_SUFFIXES, ExcelConversion, ExcelConverter
-from services.evidences.exceptions import ConversionError
+from services.evidences.exceptions import ConversionError, InvalidEvidenceError
 from services.evidences.msg_converter import MsgConversion, MsgConverter
 
 log = logging.getLogger("kct")
 
 PathLike = Union[str, Path]
 
+
+@dataclass(frozen=True)
+class StoredEvidence:
+    path: Path          # relative to the case's evidence folder
+    size: int
+    replaced: bool      # a file with this name was there and is overwritten
+
+
+def _safe(name: str) -> str:
+    name = re.sub(r"[^\w.\- ]+", "_", name).strip(" .")
+    return name or "evidence"
 
 
 class EvidenceService:
@@ -41,11 +64,87 @@ class EvidenceService:
         docx: Optional[DocxConverter] = None,
         excel: Optional[ExcelConverter] = None,
         msg: Optional[MsgConverter] = None,
+        splitter: Optional[EvidenceSplitter] = None,
     ) -> None:
         self.root = Path(root)
         self.docx = docx or DocxConverter()
         self.excel = excel or ExcelConverter()
         self.msg = msg or MsgConverter(self.docx, self.excel)
+        self.splitter = splitter or EvidenceSplitter()
+
+    # --- cases -------------------------------------------------------------------------
+
+    def case(self, case_id: str) -> "EvidenceService":
+        """The same service, working in the evidence folder of one case."""
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", case_id) or case_id in (".", ".."):
+            raise ConversionError(f"Invalid case id {case_id!r}")
+        return EvidenceService(self.root / case_id, self.docx, self.excel, self.msg, self.splitter)
+
+    def store(self, uploads: List[UploadedFile], folder: str = "") -> List[StoredEvidence]:
+        """Save uploaded evidence files, optionally in a subfolder. Same name = replaced."""
+        target = self.root
+        for part in PurePosixPath(folder.replace("\\", "/")).parts:
+            if part in ("", ".", "..", "/"):
+                continue
+            target = target / _safe(part)
+        stored = []
+        for upload in uploads:
+            name = _safe(PurePosixPath(upload.name.replace("\\", "/")).name)
+            if evidence_kind(Path(name)) is None:
+                raise InvalidEvidenceError(
+                    f"{upload.name}: not accepted as evidence; allowed: {', '.join(sorted(EVIDENCE_SUFFIXES))}")
+            if not upload.data:
+                raise InvalidEvidenceError(f"{upload.name}: the file is empty")
+            if is_output(target / name):
+                raise InvalidEvidenceError(f"{upload.name}: this name is reserved for converted files")
+        target.mkdir(parents=True, exist_ok=True)
+        for upload in uploads:
+            path = target / _safe(PurePosixPath(upload.name.replace("\\", "/")).name)
+            replaced = path.exists()
+            path.write_bytes(upload.data)
+            stored.append(StoredEvidence(path.relative_to(self.root), len(upload.data), replaced))
+            log.info("evidence %s stored (%d bytes%s)", path, len(upload.data), ", replaced" if replaced else "")
+        return stored
+
+    def evidence_files(self) -> List[Path]:
+        """The uploaded evidence files (relative paths), without what the converters made."""
+        return [p for p in self.files() if evidence_kind(p) and not is_output(self.root / p)
+                and not p.name.startswith("~$")]
+
+    def units(self) -> List[EvidenceUnit]:
+        """One unit per evidence file, converted for the AI. Conversions are refreshed."""
+        return [self.unit(relative) for relative in self.evidence_files()]
+
+    def unit(self, relative: PathLike) -> EvidenceUnit:
+        relative = Path(relative)
+        source = self.root / relative
+        kind = evidence_kind(source)
+        unit = EvidenceUnit(path=relative, kind=kind or "other")
+        title = lambda p: str(p.relative_to(self.root))  # noqa: E731
+        if kind == "word":
+            unit.groups = [[document(self.convert_to_pdf(source).pdf, title(source.with_suffix(".pdf")))]]
+        elif kind == "excel":
+            result = self.convert_excel(source)
+            unit.groups = [[document(f, title(f)) for f in [result.text, *result.images]]]
+            if result.pdf:
+                unit.groups.append([document(result.pdf, title(result.pdf))])
+        elif kind == "email":
+            result = self.convert_email(source)
+            unit.anchor = document(result.text, title(result.text))
+            for attachment in result.attachments:
+                if attachment.outputs:
+                    unit.groups.append([document(f, title(f)) for f in attachment.outputs])
+                elif attachment.note:
+                    unit.notes.append(f"{attachment.name}: {attachment.note}")
+        elif kind in ("pdf", "image", "text"):
+            unit.groups = [[document(source, title(source))]]
+        else:
+            raise ConversionError(f"{relative}: not an evidence file")
+        return unit
+
+    def parts(self, units: Optional[List[EvidenceUnit]] = None) -> List[EvidencePart]:
+        """All units split into parts that fit the model (see EvidenceSplitter)."""
+        return [part for unit in (units if units is not None else self.units()) for part in self.splitter.split(unit)]
 
     # --- files -------------------------------------------------------------------
 

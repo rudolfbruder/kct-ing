@@ -181,5 +181,56 @@ class AskTest(unittest.TestCase):
 
 
 
+class EvidenceApiTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.client = TestClient(app)
+        self.case = upload(self.client).json()["metadata"]["case_reference"]
+
+    def post(self, *files, folder=None, case=None):
+        data = {"folder": folder} if folder else None
+        return self.client.post(f"/api/v1/cases/{case or self.case}/evidences",
+                                files=[("files", f) for f in files], data=data)
+
+    def test_upload_list_and_parts(self) -> None:
+        from factories import DocxFactory
+
+        response = self.post((DocxFactory.name, DocxFactory().make(), "application/octet-stream"),
+                             ("log.txt", b"line 1\nline 2", "text/plain"), folder="tickets/q1")
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["evidence_count"], 2)
+        self.assertEqual({s["path"] for s in body["stored"]},
+                         {f"tickets/q1/{DocxFactory.name}", "tickets/q1/log.txt"})
+        self.assertTrue((STORAGE / "evidences" / self.case / "tickets" / "q1" / "log.txt").is_file())
+
+        listed = self.client.get(f"/api/v1/cases/{self.case}/evidences").json()
+        self.assertEqual({e["kind"] for e in listed}, {"word", "text"})
+
+        parts = self.client.get(f"/api/v1/cases/{self.case}/evidences/parts").json()
+        self.assertEqual(len(parts), 2)
+        word = next(p for p in parts if p["unit"].endswith(".docx"))
+        self.assertTrue(word["documents"][0].endswith(".pdf"))     # converted for the AI
+        # the converted PDF is not listed as evidence of its own
+        self.assertEqual(len(self.client.get(f"/api/v1/cases/{self.case}/evidences").json()), 2)
+
+    def test_same_name_replaces(self) -> None:
+        self.post(("a.txt", b"one", "text/plain"))
+        second = self.post(("a.txt", b"two", "text/plain")).json()
+        self.assertTrue(second["stored"][0]["replaced"])
+        self.assertEqual((STORAGE / "evidences" / self.case / "a.txt").read_text(encoding="utf-8"), "two")
+
+    def test_rejects_unknown_types_and_cases(self) -> None:
+        self.assertEqual(self.post(("tool.exe", b"MZ", "application/octet-stream")).status_code, 400)
+        self.assertEqual(self.post(("empty.pdf", b"", "application/pdf")).status_code, 400)
+        self.assertEqual(self.post(("a.txt", b"x", "text/plain"), case="case-999").status_code, 404)
+
+    def test_names_cannot_leave_the_case_folder(self) -> None:
+        response = self.post(("../../escape.txt", b"x", "text/plain"), folder="../../up")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["stored"][0]["path"], "up/escape.txt")
+        self.assertTrue((STORAGE / "evidences" / self.case / "up" / "escape.txt").is_file())
+
+
+
 if __name__ == "__main__":
     unittest.main()
