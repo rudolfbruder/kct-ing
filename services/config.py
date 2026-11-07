@@ -44,6 +44,8 @@ class Settings:
     bq_location: str  # dataset location, e.g. EU or europe-west4; empty = BigQuery decides
 
     storage_root: Path
+    # Evidence documents (assessment). Production layout unknown yet; default storage/evidences.
+    evidences_root: Path
     prompts_root: Path
     fixtures_root: Path
 
@@ -104,6 +106,7 @@ def settings() -> Settings:
         bq_dataset=os.environ.get("KCT_BQ_DATASET", ""),
         bq_location=os.environ.get("KCT_BQ_LOCATION", ""),
         storage_root=storage_root,
+        evidences_root=Path(os.environ.get("KCT_EVIDENCES_ROOT", storage_root / "evidences")),
         prompts_root=Path(os.environ.get("KCT_PROMPTS_ROOT", BASE / "prompts")),
         fixtures_root=Path(os.environ.get("KCT_FIXTURES_ROOT", BASE / "tests" / "fixtures" / "fake_ai")),
     )

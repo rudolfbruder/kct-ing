@@ -22,6 +22,22 @@ REQUEST = ProviderRequest(
 )
 ANSWER = '{"steps": []}'
 
+# Converted evidence: an Excel workbook as Markdown text, and a picture from it.
+MIXED = ProviderRequest(
+    agent="test_steps",
+    instructions="System prompt",
+    prompt="Judge the evidence.",
+    attachments=[
+        Document(data=b"%PDF-1.4", title="ev-01.pdf"),
+        Document(data="| Row | A |\n| 1 | ok |".encode(), title="ev-03.xlsx.md", mime_type="text/plain"),
+        Document(data=b"\x89PNG\r\n", title="ev-03.xlsx_images/sheet3_image1.png", mime_type="image/png"),
+    ],
+    model="some-model",
+    max_tokens=1000,
+    temperature=0,
+    output_schema=None,
+)
+
 
 def installed(module: str) -> bool:
     try:
@@ -76,6 +92,15 @@ class GeminiProviderTest(unittest.TestCase):
         self.assertEqual((response.usage.input_tokens, response.usage.output_tokens), (10, 5))
         self.assertFalse(response.truncated)
 
+    def test_sends_text_and_image_attachments(self) -> None:
+        generate = self.provider.client.models.generate_content
+        generate.return_value = self.answer(self.types.FinishReason.STOP)
+        self.provider.prompt(MIXED)
+        parts = generate.call_args.kwargs["contents"][0].parts
+        mime_types = [p.inline_data.mime_type for p in parts if p.inline_data]
+        self.assertEqual(mime_types, ["application/pdf", "text/plain", "image/png"])
+        self.assertIn("Document: ev-03.xlsx.md", [p.text for p in parts])
+
     def test_reports_truncation(self) -> None:
         self.provider.client.models.generate_content.return_value = self.answer(
             self.types.FinishReason.MAX_TOKENS
@@ -129,6 +154,18 @@ class AnthropicProviderTest(unittest.TestCase):
         self.assertEqual(response.text, ANSWER)
         self.assertEqual((response.usage.input_tokens, response.usage.output_tokens), (10, 5))
         self.assertFalse(response.truncated)
+
+    def test_sends_text_and_image_attachments(self) -> None:
+        with self.stream_returning(self.answer("end_turn")) as stream:
+            self.provider.prompt(MIXED)
+        content = stream.call_args.kwargs["messages"][0]["content"]
+        self.assertEqual(content[0]["source"]["type"], "base64")                     # PDF
+        self.assertEqual(content[1]["source"], {"type": "text", "media_type": "text/plain",
+                                                "data": "| Row | A |\n| 1 | ok |"})  # workbook text
+        self.assertEqual(content[1]["title"], "ev-03.xlsx.md")
+        self.assertEqual(content[2], {"type": "text", "text": "Image: ev-03.xlsx_images/sheet3_image1.png"})
+        self.assertEqual(content[3]["type"], "image")
+        self.assertEqual(content[3]["source"]["media_type"], "image/png")
 
     def test_reports_truncation(self) -> None:
         with self.stream_returning(self.answer("max_tokens")):

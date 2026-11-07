@@ -1,7 +1,8 @@
 # KCT
 
 Key Control Testing helper. Takes a process's control details and test plan
-(PDF) and turns them into test steps, using Gemini or Claude.
+(PDF), turns them into test steps, and prepares the evidence for checking them,
+using Gemini or Claude.
 
 The process, in the words used everywhere in this project (code, logs, docs):
 
@@ -9,6 +10,7 @@ The process, in the words used everywhere in this project (code, logs, docs):
 |---|---|---|
 | **Case** | Upload the control details and test plan PDFs; stored as `case-NNN` | done |
 | **Interpretation** | Summarize both documents and turn them into test steps with acceptance and refusal criteria (JSON) | done |
+| **Evidence** | Convert evidence files (Word, Excel, Outlook emails, PDF, images) for the AI | done |
 
 (Earlier versions called the interpretation "Stage 1 + 2".)
 
@@ -16,17 +18,21 @@ The process, in the words used everywhere in this project (code, logs, docs):
 
 Open the notebooks in `notebooks/` and run them by number (Run All in each).
 Before starting, set `KCT_DB_DRIVER=sqlite` in `.env` so the results of 04
-are still there for 05 and 06. Everything runs with the fake AI unless `.env`
+are still there for 05 and 06. Start with 00 to get a clean slate. Everything runs with the fake AI unless `.env`
 says otherwise.
 
 | # | Notebook | Shows |
 |---|---|---|
+| 00 | `00_cleanup.ipynb` | Clean slate: shows, then deletes, the database, converted evidence, fake samples and demo leftovers |
 | 01 | `01_setup.ipynb` | Python and packages are fine, settings, AI smoke test, tests, API start/stop |
 | 02 | `02_hello.ipynb` | One question to the AI ("What is 5+2?") through the app's services |
 | 03 | `03_sqlite_test.ipynb` | SQLite works: writes and shows a few records |
 | 04 | `04_demo_data.ipynb` | Interpretation end to end: two PDFs in, summaries and 17 test steps saved to the database |
 | 05 | `05_test_steps.ipynb` | The test steps of a run, as text, table and JSON |
 | 06 | `06_database.ipynb` | The database as tables, without a database GUI |
+| 07 | `07_evidence_word_to_pdf.ipynb` | Word evidence to PDF, so the AI can read it |
+| 08 | `08_evidence_excel.ipynb` | Excel evidence to text with Excel coordinates, colors and comments, plus pictures |
+| 09 | `09_evidence_email.ipynb` | Outlook emails (.msg) to text; their Word, Excel and email attachments converted too |
 
 ## Ways to run it
 
@@ -191,6 +197,9 @@ What to install in ING, and what not:
 | `pydantic` | Everything | Usually there already; must be version 2.x (`pip install --user "pydantic>=2"` if 1.x) |
 | `google-genai` | Gemini (`KCT_AI_PROVIDER=gemini`) | Yes, if missing |
 | `pandas` | `06_database.ipynb`, `table()` | Usually there already |
+| `python-docx`, `reportlab` | `07_evidence_word_to_pdf.ipynb` (.docx to PDF) | Yes, if missing (pure pip, no LibreOffice needed) |
+| `openpyxl` | `08_evidence_excel.ipynb` (Excel to text) | Yes, if missing |
+| `extract-msg` | `09_evidence_email.ipynb` (.msg emails). GPL-3.0 | Yes, if missing; check the license with ING first |
 | `fastapi`, `uvicorn`, `python-multipart` | Only the API | Only if you run the API |
 | `anthropic[vertex]` | Only Claude | Only if you use Claude |
 | `google-cloud-storage`, `google-cloud-bigquery` | Only `gcs` / `bigquery` drivers | Not now (no storage approved) |
@@ -201,7 +210,7 @@ What to install in ING, and what not:
 
    ```bash
    pip list | grep -i -E "pydantic|google-genai|pandas|fastapi|uvicorn|multipart"
-   pip install --user google-genai pydantic    # notebooks
+   pip install --user google-genai pydantic python-docx reportlab openpyxl extract-msg   # notebooks
    pip install --user fastapi uvicorn python-multipart   # only for the API
    ```
 
@@ -346,6 +355,7 @@ too low fails the same way.
 | `KCT_DB_PATH` | `<storage>/database.sqlite` | SQLite file |
 | `KCT_BQ_DATASET` | | BigQuery dataset: `dataset` (in `KCT_PROJECT_ID`) or `project.dataset` |
 | `KCT_BQ_LOCATION` | | Dataset location, e.g. `EU` or `europe-west4`. Empty = BigQuery decides |
+| `KCT_EVIDENCES_ROOT` | `<storage>/evidences` | Evidence documents (assessment). Any folder layout below it |
 | `KCT_STORAGE_ROOT` | `./storage` | Logs; also uploads, outputs and the SQLite file when those are local |
 | `KCT_PROMPTS_ROOT` | `./prompts` | Agent instructions |
 | `KCT_FIXTURES_ROOT` | `./tests/fixtures/fake_ai` | Fake mode answers |
@@ -383,6 +393,9 @@ restart the kernel after changing them.
 
 Notebooks in `notebooks/`:
 
+- `00_cleanup.ipynb`: clean slate before a demo. Lists what would be deleted
+  (database, stored cases, converted evidence, fake samples, demo leftovers,
+  logs), and deletes only after `CONFIRM = True`. See "Cleaning up".
 - `01_setup.ipynb`: set up and check everything with ▶ buttons, no terminal
   (see "Setup with play buttons").
 - `02_hello.ipynb`: asks "What is 5+2?" through `AskService`. Runs in fake mode
@@ -391,6 +404,16 @@ Notebooks in `notebooks/`:
 - `04_demo_data.ipynb`: runs one interpretation with the fake AI on two placeholder
   PDFs and saves it, so `06_database.ipynb` and `05_test_steps.ipynb` have records
   to show. Use with `KCT_DB_DRIVER=sqlite`.
+- `07_evidence_word_to_pdf.ipynb`: converts evidence Word files (`.docx`) in the
+  evidences folder to PDF, because Gemini and Claude read PDFs, not `.docx`.
+  Can create a sample evidence file first. See "Evidence files".
+- `08_evidence_excel.ipynb`: converts Excel evidence for the AI: sheets as text
+  with Excel coordinates, colors and comments, pictures as images. Can create
+  a fake ING-style workbook first. See "Excel evidence".
+- `09_evidence_email.ipynb`: converts Outlook emails (`.msg`) for the AI: the
+  email as text (header, body with lists, red text and inline images) and its
+  attachments through the Word, Excel and email converters. Can create a fake
+  evidence email first. See "Email evidence".
 - `03_sqlite_test.ipynb`: checks SQLite works on the machine. Creates
   `storage/sqlite_test.sqlite`, writes three records and shows them. Needs
   only Python; does not touch the app's database.
@@ -670,6 +693,156 @@ curl -H 'content-type: application/json' \
 | `GET /cases` | List of case IDs |
 | `GET /cases/{case_id}/files/{kind}` | PDF file names of one kind in a case |
 
+## Evidence files
+
+Evidence for the assessment goes into `storage/evidences/` (or `KCT_EVIDENCES_ROOT`).
+The production folder layout is not known yet, so any structure below it
+works: files are found in subfolders too.
+
+Gemini and Claude read PDF documents, not Word files, so `.docx` evidence is
+converted to PDF first. `notebooks/07_evidence_word_to_pdf.ipynb` does that with
+▶ buttons; from code:
+
+```python
+kct.evidences.files()                                   # every file, relative to the folder
+kct.evidences.convert("EV-01.docx")                     # Word or Excel, picks the converter
+kct.evidences.convert_all()                             # every file without an up-to-date output
+kct.evidences.attachments()                             # what the AI can read, as attachments
+
+kct.docx_converter.convert(Path("x.docx"))              # the converters on their own,
+kct.excel_converter.convert(Path("y.xlsx"))             # for any file, also outside the folder
+```
+
+The logic is in two services, `DocxConverter` (`services/evidences/docx_converter.py`)
+and `ExcelConverter` (`services/evidences/excel_converter.py`). `EvidenceService`
+only finds the files and hands each to the right converter.
+
+Two engines, picked by `engine="auto"`:
+
+| Engine | Used when | Result |
+|---|---|---|
+| `libreoffice` | LibreOffice (`soffice`) is installed | Exact Word layout |
+| `python` | Otherwise. Needs only `python-docx` and `reportlab` | Text, headings, bold/italic, lists, tables and pictures. Not the exact layout: columns, text boxes, headers and footers are dropped |
+
+The `python` engine uses DejaVu (on most Linux workbenches) or Arial (macOS)
+for the text, and falls back to reportlab's built-in Vera font, which has no
+letters beyond Western European ones. If accented letters come out as boxes on
+the workbench, ask for the `fonts-dejavu` package or LibreOffice.
+
+`python scripts/make_sample_evidence.py` writes made-up samples of each kind
+with the factories (see "Fake evidence: factories").
+
+### Excel evidence
+
+Gemini on Vertex AI accepts PDF, plain text and images, not Excel; Claude the
+same. ING evidence workbooks have 10 to 40 columns and 1 to 5 sheets, often
+with colored rows, comments and pasted screenshots. What works best for that
+(research summary: text formats for tables beat images for exact values;
+Markdown and HTML beat CSV; models read values off rendered pages poorly):
+
+| Sent to the AI | Made by | For |
+|---|---|---|
+| `<name>.xlsx.md` | openpyxl (pip) | Exact values. Every sheet as a Markdown table with Excel column letters and row numbers, so the AI cites "F14". Colors, comments, merged cells, hidden rows/columns/sheets and uncalculated formulas written next to the value: `{row fill: light red}`, `{text: red}`, `{comment: "..."}`, `(hidden)` |
+| `<name>.xlsx_images/*.png` | openpyxl | Screenshots pasted into the sheets, as images. The text says which cell each sits at |
+| `<name>.xlsx.pdf` | LibreOffice, only when installed | The look: every sheet landscape, fitted to the page width. Shows charts and conditional-formatting colors, but 30+ columns come out too small to read values from; that is what the `.md` is for |
+
+```python
+kct.evidences.convert_excel("EV-03.xlsx")    # one workbook
+kct.evidences.convert_all_excel()            # every workbook without an up-to-date .md
+kct.excel_converter.convert(Path("y.xlsx"))  # the converter on its own
+kct.evidences.attachments()                  # PDFs, workbook texts and pictures, ready for the AI
+```
+
+`notebooks/08_evidence_excel.ipynb` does the same with ▶ buttons and shows the
+text the AI gets. Without LibreOffice these are not covered: charts, colors
+set by conditional formatting (the text flags the ranges), and formulas in a
+file never saved by Excel (shown as the formula). A sheet of 40 columns and
+1,000 rows is roughly 100,000 to 200,000 tokens; the notebook prints an
+estimate per workbook.
+
+Test before relying on it: ask the model questions with known answers about
+2 or 3 real (anonymized) ING workbooks, with the text only, the PDF only and
+both, and keep what answers correctly.
+
+The fake workbook from `ExcelFactory` has what real ones
+tend to have: 4 sheets (one hidden), a 20-column, 100-row table with a merged title,
+light red exception rows and red text, reviewer comments, a hidden column and
+row, a two-level merged header, a form-style summary with formulas and
+conditional formatting, and a pasted screenshot.
+
+### Email evidence
+
+Evidence often arrives as Outlook emails (`.msg`): approvals, confirmations,
+forwarded reports. The models cannot open `.msg`, so `MsgConverter`
+(`services/evidences/msg_converter.py`) turns an email into:
+
+| Output | Contents |
+|---|---|
+| `<name>.msg.md` | Header table (From, To, Cc, date, subject, number of earlier emails); the body, from the HTML version when there is one, keeping lists, tables, colored text (`{text: red}`), links as `text (url)` and where inline images sit (`[inline image: x.png]`); every earlier email quoted in the thread as its own section (`### Earlier email 2 of 5`), found by Outlook's From/Sent block (English, Dutch, German, French); a numbered list of attachments with what each became |
+| `<name>.msg_attachments/` | Every attachment, converted by the matching service: Word to PDF, Excel to text + pictures, attached emails to their own `.msg.md` (up to 3 levels deep). PDFs, images and text files are kept as they are. Other formats (`.zip`, `.doc`, `.xls`, `.pptx`) are listed but not sent |
+
+```python
+kct.evidences.convert("EV-04.msg")            # or kct.evidences.convert_email(...)
+kct.msg_converter.convert(Path("x.msg"))      # the converter on its own
+```
+
+A broken attachment never fails the whole email; the list says why it was
+skipped. Encrypted or signed emails (S/MIME) may not open.
+
+`.msg` is read with `extract-msg`, which is **GPL-3.0** licensed. Using it
+internally is normally fine, but check it against ING's rules for open-source
+licenses before production.
+
+### Fake evidence: factories
+
+`factories/` (Laravel: `database/factories`) makes fake evidence files for
+demos and tests, with made-up data for the sample case:
+
+| Factory | Makes |
+|---|---|
+| `DocxFactory` | `EV-01_..._SAMPLE.docx`: headings, a list, a table, a screenshot |
+| `ExcelFactory(rows=100)` | `EV-03_..._SAMPLE.xlsx`: 4 sheets (one hidden), 20 columns, colored exception rows, comments, hidden parts, formulas, conditional formatting, a pasted screenshot |
+| `MsgFactory(history=2, images=1, links=True, attachments=True)` | `EV-04_..._SAMPLE.msg`: the newest reply in an evidence thread with `history` earlier emails quoted below it (Outlook From/Sent/To/Subject blocks), `images` inline screenshots spread over the thread (`image001.png`, ...), ServiceNow/portal/SharePoint links, and the Word file, an Excel extract and a forwarded approval email attached |
+
+```python
+from factories import DocxFactory, ExcelFactory, MsgFactory
+
+DocxFactory().create(folder)          # writes the file, returns its path
+ExcelFactory(rows=15).make()          # the file as bytes
+MsgFactory(history=6, images=3).create(folder)   # a longer thread
+```
+
+`python scripts/make_sample_evidence.py` writes all three into the evidences
+folder.
+
+## Cleaning up
+
+`notebooks/00_cleanup.ipynb` (or `CleanupService` in
+`services/maintenance/cleanup_service.py`) removes what demos and test runs
+leave behind. Choose groups, look at the list, then confirm:
+
+| Group | Deletes | Default in the notebook |
+|---|---|---|
+| `database` | The SQLite file: all case interpretations and test steps | on |
+| `evidence_outputs` | What the converters made: PDFs next to `.docx`, `.xlsx.md`, `.msg.md`, `*_images`, `*_attachments` | on |
+| `evidence_samples` | The fake files from the factories (`*_SAMPLE.*`) | on |
+| `demo_files` | `storage/demo/`, `sqlite_test.sqlite`, `api_from_notebook.log` | on |
+| `cases` | `uploads/` and `outputs/`: every stored case, real uploaded PDFs included | off |
+| `logs` | `storage/logs/` | off |
+| `evidence_all` | Everything in the evidences folder, real evidence included | off |
+
+Nothing is deleted while `CONFIRM = False`. Only paths inside
+`KCT_STORAGE_ROOT` and `KCT_EVIDENCES_ROOT` are ever deleted; a BigQuery
+dataset or a GCS bucket is never touched (listed as skipped). After deleting
+the database, restart the kernels of other open notebooks and the API.
+
+```python
+from services.maintenance.cleanup_service import CleanupService
+cleanup = CleanupService(settings())
+plan = cleanup.plan(["database", "evidence_outputs"])   # deletes nothing
+cleanup.run(plan)
+```
+
 ## Logs
 
 | File | Content |
@@ -718,6 +891,14 @@ services/
   app.py                        boot(): builds every service; used by routes/api.py and notebooks
   config.py                     All settings, read from env
   playground/ask_service.py     AskService: one question to the provider (smoke test)
+  maintenance/cleanup_service.py  CleanupService: deletes demo and test leftovers, plan first
+  evidences/
+    evidence_service.py         EvidenceService: finds evidence files, picks the converter, collects attachments
+    units.py                    What counts as evidence, and which files the converters made
+    docx_converter.py           DocxConverter: Word to PDF (LibreOffice, or python-docx + reportlab)
+    excel_converter.py          ExcelConverter: Excel to Markdown text + pictures (+ PDF with LibreOffice)
+    msg_converter.py            MsgConverter: Outlook email to text; attachments through the other converters
+    libreoffice.py              Optional LibreOffice helper shared by both converters
   files/
     file_service.py             Case folders, uploads and outputs, on any disk
     disks/                      base.py (contract), local.py, gcs.py, manager.py (KCT_FILES_DRIVER)
@@ -737,18 +918,24 @@ services/
     agents/                     One file per agent, e.g. test_steps_agent.py
     data.py                     TestStep, CaseInterpretation and other data shapes
 scripts/test_steps.py           Print test steps of a case interpretation
+factories/                      DocxFactory, ExcelFactory, MsgFactory: fake evidence files
+scripts/make_sample_evidence.py Write the fake evidence files with the factories
 notebooks/                      Demo notebooks, run them in order:
+  00_cleanup.ipynb              Clean slate (shows the list, deletes after CONFIRM)
   01_setup.ipynb                Setup and checks, one cell per step (no terminal needed)
   02_hello.ipynb                Asks "What is 5+2?" through AskService
   03_sqlite_test.ipynb          Checks SQLite works: writes and shows a few records
   04_demo_data.ipynb            Fake interpretation that fills the database with demo records
   05_test_steps.ipynb           Print stored test steps
   06_database.ipynb             Browse the SQLite database as tables
+  07_evidence_word_to_pdf.ipynb Evidence .docx to PDF
+  08_evidence_excel.ipynb       Evidence Excel to text + images for the AI
+  09_evidence_email.ipynb       Outlook emails to text, attachments converted
 prompts/<agent name>.md         Each agent's instructions
 tests/fixtures/fake_ai/         Fake mode answers, one per agent
 kct.sh                          All setup and run commands without Docker
 Dockerfile, docker-compose.yml  API and JupyterLab containers
-storage/                        uploads/, outputs/, logs/, database.sqlite if sqlite (never committed)
+storage/                        uploads/, outputs/, evidences/, logs/, database.sqlite if sqlite (never committed)
 ```
 
 ### Writing an agent
