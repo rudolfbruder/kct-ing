@@ -1,39 +1,286 @@
 # KCT
 
 Key Control Testing helper. Takes a process's control details and test plan
-(PDF), summarizes them and turns them into test steps, using Gemini or Claude.
+(PDF) and turns them into test steps, using Gemini or Claude.
 
-| Stage | What it does | Status |
+The process, in the words used everywhere in this project (code, logs, docs):
+
+| Step | What it does | Status |
 |---|---|---|
-| 1 | Summarize control details or test plan into structured Markdown | done |
-| 2 | Upload both documents, summarize them and generate test steps (JSON) | done |
-| 3 | Upload evidence and judge each test step effective / not effective | not started |
+| **Case** | Upload the control details and test plan PDFs; stored as `case-NNN` | done |
+| **Interpretation** | Summarize both documents and turn them into test steps with acceptance and refusal criteria (JSON) | done |
 
-## Setup
+(Earlier versions called the interpretation "Stage 1 + 2".)
+
+## Demo: the notebooks in order
+
+Open the notebooks in `notebooks/` and run them by number (Run All in each).
+Before starting, set `KCT_DB_DRIVER=sqlite` in `.env` so the results of 04
+are still there for 05 and 06. Everything runs with the fake AI unless `.env`
+says otherwise.
+
+| # | Notebook | Shows |
+|---|---|---|
+| 01 | `01_setup.ipynb` | Python and packages are fine, settings, AI smoke test, tests, API start/stop |
+| 02 | `02_hello.ipynb` | One question to the AI ("What is 5+2?") through the app's services |
+| 03 | `03_sqlite_test.ipynb` | SQLite works: writes and shows a few records |
+| 04 | `04_demo_data.ipynb` | Interpretation end to end: two PDFs in, summaries and 17 test steps saved to the database |
+| 05 | `05_test_steps.ipynb` | The test steps of a run, as text, table and JSON |
+| 06 | `06_database.ipynb` | The database as tables, without a database GUI |
+
+## Ways to run it
+
+| Where | Needs | API | Notebooks |
+|---|---|---|---|
+| Docker on your computer | Docker Desktop only | `docker compose up api` | `docker compose up jupyter`, or VS Code |
+| Python on your computer | Python 3.9+ | `uvicorn ...` | `jupyter lab`, or VS Code |
+| Vertex AI Workbench (ING, or a personal project) | A workbench instance | Terminal in JupyterLab | JupyterLab, or VS Code if allowed |
+
+Try everything first without any cloud access: `KCT_AI_PROVIDER=fake`. The
+smoke test is `POST /api/v1/ask` or `notebooks/02_hello.ipynb`, both asking
+"What is 5+2?". In fake mode the answer is always `5 + 2 = 7.`; with a real
+provider the response also shows which model answered and how many tokens it
+used.
+
+### Setup with play buttons: `notebooks/01_setup.ipynb`
+
+Prefer JupyterLab to a terminal? Open `notebooks/01_setup.ipynb` and press ▶ on
+each cell, top to bottom. It does everything `kct.sh` does: checks Python and
+packages, installs what is missing, shows the settings, asks "What is 5+2?",
+checks SQLite, runs the tests, and starts and stops the API. Settings go in
+its first cell (or in `.env`).
+
+### One script for all commands: `kct.sh`
+
+The same from a terminal: every command in this README is in `kct.sh`, so nothing has to be copied by hand. In a JupyterLab terminal,
+from the project folder:
+
+```bash
+chmod +x kct.sh              # once
+./kct.sh install             # notebook packages, only what is missing
+./kct.sh install --api       # plus the API packages
+./kct.sh check               # what is installed, which settings are active
+./kct.sh ask                 # smoke test: "What is 5+2?"
+./kct.sh sqlite              # check SQLite works (writes storage/sqlite_test.sqlite)
+./kct.sh api                 # start the API on port 8000 (./kct.sh api 8010 for another)
+./kct.sh curl                # in a second terminal: call /health and /ask
+./kct.sh steps               # list case interpretations
+./kct.sh test                # run the tests
+```
+
+It loads `.env` when there is one. Without `.env` it runs in fake mode.
+For an internal pip mirror: `export KCT_PIP_INDEX=<mirror-url>` before
+`./kct.sh install`.
+
+## Run with Docker (no local Python needed)
+
+1. Install Docker Desktop and start it.
+2. Optional: `cp .env.example .env` and fill it in. Without `.env` everything
+   runs in fake mode. Docker Compose reads `.env` itself; no `source` needed.
+3. Build once (again after changing `requirements.txt`):
+
+   ```bash
+   docker compose build
+   ```
+
+4. Start what you need, from the project folder:
+
+   ```bash
+   docker compose up api        # http://localhost:8000/docs
+   docker compose up jupyter    # http://localhost:8888, open notebooks/02_hello.ipynb
+   docker compose up            # both
+   ```
+
+5. Stop with Ctrl+C, or `docker compose down`.
+
+Port taken (for example by `php artisan serve` on 8000)? Pick others, on the
+command line or in `.env`:
+
+```bash
+KCT_API_PORT=8010 KCT_JUPYTER_PORT=8890 docker compose up
+```
+
+Laravel Herd itself only uses ports 80 and 443, so it does not clash.
+
+The project folder is mounted into the containers, so code changes apply
+without a rebuild (the API reloads by itself; in Jupyter restart the kernel),
+and `storage/` lands in your project folder as usual.
+
+Google credentials for Gemini or Claude on Vertex AI: the containers read your
+gcloud login from `~/.config/gcloud`. Log in once on your computer. Without a
+local gcloud, log in through a container instead:
+
+```bash
+docker run --rm -it -v ~/.config/gcloud:/root/.config/gcloud \
+  gcr.io/google.com/cloudsdktool/google-cloud-cli:stable \
+  gcloud auth application-default login
+```
+
+## Run with Python
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt      # skip what the workbench already has
+pip install jupyterlab               # only for notebooks outside a workbench
 cp .env.example .env                 # then fill it in
 ```
 
-Nothing loads `.env` automatically. Export it into your shell before starting:
+The app reads `.env` from the project folder by itself (API, notebooks,
+`kct.sh`). Variables already set in the shell or in a notebook cell win over
+it. `KCT_ENV_FILE=<path>` reads another file; `KCT_ENV_FILE=` turns it off.
 
-```bash
-set -a; source .env; set +a
-```
+No vim or nano needed to edit it:
+
+- In JupyterLab: **File > Open from Path...**, type `.env`, and it opens in
+  JupyterLab's text editor. Save with Ctrl+S. To see dot files in the file
+  browser: **View > Show Hidden Files**.
+- Or fill in Step 1 of `notebooks/01_setup.ipynb` and run Step 1b: it writes the
+  values into `.env` (creating it from `.env.example` if needed).
+- In VS Code: open the project folder; `.env` is in the file list.
 
 Gemini and Claude on Vertex AI use Google Application Default Credentials. On
-the Vertex workbench this works out of the box; elsewhere run
+a Vertex AI Workbench this works out of the box; elsewhere run
 `gcloud auth application-default login`.
 
-## Launch
+API:
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Interactive docs (try every endpoint from the browser): http://localhost:8000/docs
+Open http://localhost:8000/docs (interactive docs, try every endpoint there),
+or test from the terminal:
+
+```bash
+curl -X POST -H 'Content-Type: application/json' \
+     -d '{"question": "What is 5+2?"}' http://localhost:8000/api/v1/ask
+```
+
+Notebooks: run `jupyter lab` in the project folder and open
+`notebooks/02_hello.ipynb`, then Run > Run All Cells. The notebooks call the
+services directly, so the API does not need to be running.
+
+## Run on Vertex AI Workbench (as in ING)
+
+Docker is for your own computer only. In ING there is no Docker: the
+workbench already has Python and JupyterLab, and you install the few
+packages with pip.
+
+What to install in ING, and what not:
+
+| Package | Needed for | Install? |
+|---|---|---|
+| Python 3.9+, JupyterLab, `sqlite3` | Everything | No: on the workbench already (`sqlite3` is part of Python) |
+| `pydantic` | Everything | Usually there already; must be version 2.x (`pip install --user "pydantic>=2"` if 1.x) |
+| `google-genai` | Gemini (`KCT_AI_PROVIDER=gemini`) | Yes, if missing |
+| `pandas` | `06_database.ipynb`, `table()` | Usually there already |
+| `fastapi`, `uvicorn`, `python-multipart` | Only the API | Only if you run the API |
+| `anthropic[vertex]` | Only Claude | Only if you use Claude |
+| `google-cloud-storage`, `google-cloud-bigquery` | Only `gcs` / `bigquery` drivers | Not now (no storage approved) |
+| `httpx` | Only the tests | No |
+
+1. Open the workbench's JupyterLab and clone or upload the project folder.
+2. In a JupyterLab terminal, from the project folder:
+
+   ```bash
+   pip list | grep -i -E "pydantic|google-genai|pandas|fastapi|uvicorn|multipart"
+   pip install --user google-genai pydantic    # notebooks
+   pip install --user fastapi uvicorn python-multipart   # only for the API
+   ```
+
+   Install only what the first command does not list. If pip cannot reach
+   PyPI, ask the platform team for the internal mirror and set it with
+   `pip config set global.index-url <mirror-url>`. After installing, restart
+   the notebook kernel.
+3. Notebooks: open `notebooks/02_hello.ipynb`. It reads `.env`; or set the
+   variables in the first cell, before `boot()`:
+
+   ```python
+   os.environ["KCT_AI_PROVIDER"] = "gemini"
+   os.environ["KCT_PROJECT_ID"] = "<project>"
+   ```
+
+   Run all cells. Settings are read once per kernel, so after changing a
+   variable restart the kernel (Kernel > Restart Kernel).
+4. API: in a JupyterLab terminal run
+   `uvicorn main:app --host 0.0.0.0 --port 8000` (it reads `.env` itself),
+   or use Step 8 of `notebooks/01_setup.ipynb`. Open it through the
+   JupyterLab proxy: `https://<workbench-url>/proxy/8000/docs`.
+
+## Notebooks in VS Code
+
+What you need:
+
+1. VS Code with two extensions: **Python** and **Jupyter** (both by
+   Microsoft).
+2. A Python kernel that has the project's packages. One of:
+   - **Docker** (no local Python): run `docker compose up jupyter`, then in
+     VS Code open a notebook, click **Select Kernel** (top right) >
+     **Existing Jupyter Server**, enter `http://localhost:8888`, and pick
+     **Python 3**.
+   - **Local Python**: create `.venv` as in "Run with Python", also
+     `pip install ipykernel`, then **Select Kernel** > **Python
+     Environments** > `.venv`.
+3. Open the project folder itself in VS Code (File > Open Folder), so the
+   notebooks find `services/`.
+4. Settings: the notebooks read the project's `.env` themselves; values set
+   in a notebook cell before `boot()` win over it.
+5. Google credentials: `gcloud auth application-default login` on your
+   computer (or the Docker command above). Not needed in fake mode.
+
+In ING, VS Code would have to reach the Vertex AI Workbench instead of a local
+kernel. Ask the platform team first:
+
+- Whether VS Code may connect to the workbench at all (some setups only allow
+  the browser JupyterLab), and which way: the workbench's own Code editor,
+  Remote - SSH, or a remote Jupyter server URL.
+- Whether installing the Python and Jupyter extensions is allowed on the ING
+  laptop.
+- Whether `pip install` from PyPI works on the workbench, or packages come
+  from an internal mirror (then set `pip config set global.index-url <mirror>`).
+- Which project ID and region to use (`KCT_PROJECT_ID`, `KCT_LOCATION`), and
+  whether Gemini (and Claude, if wanted) is enabled for the project in
+  Vertex AI.
+- Where documents may be stored. Until that is approved, keep
+  `KCT_FILES_DRIVER=local` and `KCT_DB_DRIVER=memory`.
+
+## Testing on a personal Google Cloud project
+
+Before ING approves anything, the same code runs on a private Google Cloud
+project with a few euros of credit. Use only sample documents there, never
+real ING documents or evidence.
+
+1. In the Google Cloud console create a project and link billing (the
+   credit). Set a budget alert under Billing > Budgets & alerts, for example
+   at 5 EUR.
+2. Enable the Vertex AI API: APIs & Services > Enable APIs and services >
+   "Vertex AI API".
+3. Pick where to run it:
+   - **Your computer, with Docker** (cheapest; only model calls are billed).
+     Log in with the Docker command in "Run with Docker", then put this in
+     `.env` and run `docker compose up`:
+
+     ```bash
+     KCT_AI_PROVIDER=gemini
+     KCT_PROJECT_ID=<project>
+     KCT_LOCATION=europe-west4
+     ```
+
+   - **Cloud Shell** (button `>_` top right in the console; free, has Python
+     and Docker, nothing to install). Clone the project, then
+     `pip install -r requirements.txt`, export the three variables above and
+     run `uvicorn main:app --port 8080`. Open it with Web Preview > Preview
+     on port 8080, then add `/docs` to the URL.
+   - **Vertex AI Workbench**, closest to ING: Vertex AI > Workbench > Create
+     new, smallest machine type, then follow "Run on Vertex AI Workbench". A
+     workbench is billed per hour while it runs, so stop it when you are done.
+4. Smoke test with `/ask` or `notebooks/02_hello.ipynb` first: a question costs a
+   fraction of a cent. An interpretation (three calls with two PDFs on Gemini 2.5
+   Pro) costs a few cents, depending on document size and thinking tokens.
+   `storage/logs/agents.log` has the token counts of each call.
+
+Start with Gemini. Claude needs extra steps: enable the model in Vertex AI
+Model Garden and check its region.
 
 ## Choosing the AI provider
 
@@ -78,7 +325,7 @@ too low fails the same way.
 | `KCT_FILES_DRIVER` | `local` | Where uploads and outputs go: `local` or `gcs` |
 | `KCT_GCS_BUCKET` | | Bucket, when `KCT_FILES_DRIVER=gcs` |
 | `KCT_GCS_PREFIX` | | Optional folder inside the bucket |
-| `KCT_DB_DRIVER` | `sqlite` | Database: `sqlite` or `bigquery` |
+| `KCT_DB_DRIVER` | `memory` | Database: `memory` (nothing stored), `sqlite` or `bigquery` |
 | `KCT_DB_PATH` | `<storage>/database.sqlite` | SQLite file |
 | `KCT_BQ_DATASET` | | BigQuery dataset: `dataset` (in `KCT_PROJECT_ID`) or `project.dataset` |
 | `KCT_BQ_LOCATION` | | Dataset location, e.g. `EU` or `europe-west4`. Empty = BigQuery decides |
@@ -89,11 +336,63 @@ too low fails the same way.
 Thinking tokens count against the output limits. If a call fails with
 "answer hit max_tokens", raise the limit for that agent.
 
+## Using the services from a notebook
+
+All work lives in services; the API controllers only translate HTTP to service
+calls. `services/app.py` builds every service once, and both `routes/api.py`
+and notebooks use it, so a notebook runs exactly the code the API runs.
+
+```python
+from services.app import boot
+
+kct = boot()                                   # reads KCT_* env vars, sets up logging
+kct.ask.ask("What is 5+2?").answer             # smoke test of the AI provider
+case_id = kct.interpretations.create_case(["CD.pdf"], ["TP.pdf"])
+interpretation = kct.interpretations.generate(case_id)
+kct.summaries.summarize(case_id, DocumentKind.TEST_PLAN)
+kct.database.interpretations()
+```
+
+| Service | API |
+|---|---|
+| `kct.ask.ask(question)` | `POST /ask` |
+| `kct.summaries.summarize(case_id, kind)` | `POST /summarize` |
+| `kct.interpretations.create_and_generate(cd, tp)` | `POST /test-steps` |
+| `kct.interpretations.generate(case_id)` | `POST /cases/{case_id}/test-steps` |
+| `kct.interpretations.latest(case_id)` | `GET /cases/{case_id}/test-steps` |
+
+Settings are read once per kernel: set `KCT_*` variables before `boot()`, or
+restart the kernel after changing them.
+
+Notebooks in `notebooks/`:
+
+- `01_setup.ipynb`: set up and check everything with ▶ buttons, no terminal
+  (see "Setup with play buttons").
+- `02_hello.ipynb`: asks "What is 5+2?" through `AskService`. Runs in fake mode
+  unless `KCT_AI_PROVIDER` is set.
+- `05_test_steps.ipynb`: reads stored test steps from the database.
+- `04_demo_data.ipynb`: runs one interpretation with the fake AI on two placeholder
+  PDFs and saves it, so `06_database.ipynb` and `05_test_steps.ipynb` have records
+  to show. Use with `KCT_DB_DRIVER=sqlite`.
+- `03_sqlite_test.ipynb`: checks SQLite works on the machine. Creates
+  `storage/sqlite_test.sqlite`, writes three records and shows them. Needs
+  only Python; does not touch the app's database.
+- `06_database.ipynb`: browses the SQLite file (`KCT_DB_DRIVER=sqlite`) without
+  any web page. Lists tables and row counts, shows interpretations and test
+  steps, and runs any SQL you type, each result as a table in the notebook.
+  Opens the file read-only. Needs pandas.
+
+No browser GUI (as on the ING machine)? Use only the notebooks and the
+terminal: the notebooks call the services directly, `06_database.ipynb` replaces
+a database GUI, and the API is reachable with `curl` from a JupyterLab
+terminal (`curl http://localhost:8000/api/v1/health`) even when `/docs` cannot
+be opened.
+
 ## API
 
 All endpoints are under `/api/v1`. Examples assume `localhost:8000`.
 
-### Stage 2: generate test steps — `POST /test-steps`
+### Interpretation: generate test steps — `POST /test-steps`
 
 Multipart upload. Each field takes one or more PDFs (repeat the field for more).
 
@@ -199,7 +498,7 @@ Test step fields:
 | `description` | What to examine and how, including control ID and evidence IDs |
 | `acceptance_criteria` | Conditions that must all hold for the step to pass |
 | `refusal_criteria` | Conditions under which the step fails |
-| `status` | `pending` after Stage 2; Stage 3 sets `effective` or `not_effective` |
+| `status` | `pending` after the interpretation; the assessment sets `effective` or `not_effective` |
 
 Errors:
 
@@ -211,7 +510,7 @@ Errors:
 | 500 | AI provider not configured (for example `KCT_PROJECT_ID` missing) |
 | 502 | An agent failed, was cut off by its token limit, or returned output that does not match the schema. The detail starts with the case ID; the files are stored, so retry with the endpoint below |
 
-### Re-run Stage 2 on a stored case — `POST /cases/{case_id}/test-steps`
+### Re-run the interpretation on a stored case — `POST /cases/{case_id}/test-steps`
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/cases/case-002/test-steps
@@ -242,9 +541,15 @@ driver for ING. Controllers do not know which one runs.
 | What | Setting | Local | Google Cloud |
 |---|---|---|---|
 | Uploaded PDFs and outputs | `KCT_FILES_DRIVER` | `local`: under `KCT_STORAGE_ROOT` | `gcs`: in `KCT_GCS_BUCKET` |
-| Case interpretations and test steps | `KCT_DB_DRIVER` | `sqlite`: `storage/database.sqlite` | `bigquery`: in `KCT_BQ_DATASET` |
+| Case interpretations and test steps | `KCT_DB_DRIVER` | `memory` (default): nothing stored. `sqlite`: `storage/database.sqlite` | `bigquery`: in `KCT_BQ_DATASET` |
 
 Logs always stay local in `storage/logs/`.
+
+No database is approved yet, so the default is `memory`: nothing is written
+to any database, and stored test steps can be read back (API, notebook) only
+until the API or the notebook kernel restarts. The readable copies in
+`outputs/case-NNN/` stay. The SQLite and BigQuery drivers are kept for later;
+switch with `KCT_DB_DRIVER`.
 
 Files keep the same layout on both disks: `uploads/case-NNN/<kind>/*.pdf` and
 `outputs/case-NNN/*`, below `KCT_GCS_PREFIX` in the bucket. Each case also has
@@ -258,7 +563,7 @@ The same tables on SQLite and BigQuery:
 | Table | One row per | Columns |
 |---|---|---|
 | `cases` | Uploaded case | `id`, `reference` (case-001), `created_at` |
-| `case_interpretations` | Stage 2 run | `id`, `case_id`, `provider`, `model`, `control_details_summary`, `test_plan_summary`, `created_at` |
+| `case_interpretations` | Interpretation run | `id`, `case_id`, `provider`, `model`, `control_details_summary`, `test_plan_summary`, `created_at` |
 | `test_steps` | Test step | `id`, `case_interpretation_id`, `case_id`, `position`, `reference`, `title`, `description`, `acceptance_criteria`, `refusal_criteria`, `status`, `created_at`, `updated_at` |
 
 - IDs are UUIDs made when a row is saved, because BigQuery has no
@@ -299,7 +604,7 @@ print([b.name for b in storage.Client(project="<project>").list_buckets()])
 ```
 
 Rows are written with DML `INSERT` in one transaction, not with streaming
-inserts. BigQuery cannot update streamed rows for up to 90 minutes, and Stage 3
+inserts. BigQuery cannot update streamed rows for up to 90 minutes, and the assessment
 needs to update each step's status.
 
 To add another backend later, such as Cloud SQL:
@@ -315,7 +620,7 @@ python scripts/test_steps.py <id>         # metadata, then the test steps of one
 python scripts/test_steps.py <id> --json  # the same as JSON
 ```
 
-In Jupyter, open `notebooks/test_steps.ipynb`, set `CASE_INTERPRETATION_ID`
+In Jupyter, open `notebooks/05_test_steps.ipynb`, set `CASE_INTERPRETATION_ID`
 and run the cells. Or, in any notebook started in the project folder:
 
 ```python
@@ -329,7 +634,7 @@ table("<id>")    # pandas DataFrame, one row per step
 The script reads through the same driver as the API, so it works on SQLite
 and BigQuery. On BigQuery you can also query the tables in the Cloud Console.
 
-### Stage 1: summarize one document — `POST /summarize`
+### One summary only (part of the interpretation) — `POST /summarize`
 
 ```bash
 curl -H 'content-type: application/json' \
@@ -366,7 +671,7 @@ tail -n 1 storage/logs/agents.log | python -m json.tool
 python -m unittest discover tests
 ```
 
-`tests/test_database.py` checks the SQLite repository and the notebook script.
+`tests/test_database.py` checks the SQLite and memory repositories and the notebook script.
 `tests/test_storage_drivers.py` checks the file service and the GCS and BigQuery
 drivers, with the Google Cloud calls replaced.
 `tests/test_api.py` runs the API end to end with the fake provider in a
@@ -376,25 +681,29 @@ Claude providers send and how they read answers, with the network call replaced.
 ## Code layout
 
 Laravel-style: routes bind to controllers, controllers only call services.
+All work is in services, built once by `services/app.py` for the API and notebooks.
 
 ```
 main.py                         App, logging, exception -> HTTP status mapping
 routes/api.py                   Routes bound to controller methods
 controllers/
-  test_steps_controller.py      Stage 2: store files -> run agents -> save to database -> respond
+  test_steps_controller.py      Interpretation over HTTP (InterpretationService does the work)
+  ask_controller.py             POST /ask smoke test
   case_interpretations_controller.py  Read stored case interpretations
-  summary_controller.py         Stage 1
+  summary_controller.py         One summary (part of the interpretation)
   cases_controller.py           Health, case listings
 bootstrap/logging.py            app.log and agents.log
 services/
+  app.py                        boot(): builds every service; used by routes/api.py and notebooks
   config.py                     All settings, read from env
+  playground/ask_service.py     AskService: one question to the provider (smoke test)
   files/
     file_service.py             Case folders, uploads and outputs, on any disk
     disks/                      base.py (contract), local.py, gcs.py, manager.py (KCT_FILES_DRIVER)
-  database/                     Stage 2 results
+  database/                     Interpretation results
     contracts.py                CaseInterpretationRepository: what every driver offers
     manager.py                  Picks the driver from KCT_DB_DRIVER
-    drivers/                    sqlite.py, bigquery.py
+    drivers/                    memory.py (default), sqlite.py, bigquery.py
   ai/                           Small Python copy of the Laravel AI SDK
     agent.py                    Agent base: instructions(), output_schema, prompt(), fake()
     attachments.py              Document.from_path()
@@ -402,13 +711,23 @@ services/
     manager.py                  Picks the provider by name
     providers/                  base.py (contract), gemini.py, anthropic.py, fake.py
   control_testing/
+    interpretation_service.py   Interpretation: store case, run agents, save interpretation
+    summary_service.py          One summary (part of the interpretation)
     agents/                     One file per agent, e.g. test_steps_agent.py
     data.py                     TestStep, CaseInterpretation and other data shapes
 scripts/test_steps.py           Print test steps of a case interpretation
-notebooks/test_steps.ipynb      The same in Jupyter
+notebooks/                      Demo notebooks, run them in order:
+  01_setup.ipynb                Setup and checks, one cell per step (no terminal needed)
+  02_hello.ipynb                Asks "What is 5+2?" through AskService
+  03_sqlite_test.ipynb          Checks SQLite works: writes and shows a few records
+  04_demo_data.ipynb            Fake interpretation that fills the database with demo records
+  05_test_steps.ipynb           Print stored test steps
+  06_database.ipynb             Browse the SQLite database as tables
 prompts/<agent name>.md         Each agent's instructions
 tests/fixtures/fake_ai/         Fake mode answers, one per agent
-storage/                        uploads/, outputs/, logs/, database.sqlite (never committed)
+kct.sh                          All setup and run commands without Docker
+Dockerfile, docker-compose.yml  API and JupyterLab containers
+storage/                        uploads/, outputs/, logs/, database.sqlite if sqlite (never committed)
 ```
 
 ### Writing an agent

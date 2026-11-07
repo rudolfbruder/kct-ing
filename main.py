@@ -6,15 +6,12 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from bootstrap.logging import configure_logging
 from routes.api import router
 from services.ai.exceptions import AiConfigurationError
-from services.config import settings
-from services.control_testing.exceptions import StageFailedError
+from services.control_testing.exceptions import InterpretationFailedError
 from services.database.exceptions import DatabaseConfigurationError, RecordNotFoundError
 from services.files.exceptions import CaseNotFoundError, InvalidUploadError
 
-configure_logging(settings())
 log = logging.getLogger("kct")
 
 app = FastAPI(title="KCT", version="0.2.0")
@@ -53,7 +50,7 @@ def ai_misconfigured(_: Request, exc: AiConfigurationError) -> JSONResponse:
     return _error(500, exc)
 
 
-@app.exception_handler(StageFailedError)
-def stage_failed(_: Request, exc: StageFailedError) -> JSONResponse:
+@app.exception_handler(InterpretationFailedError)
+def interpretation_failed(_: Request, exc: InterpretationFailedError) -> JSONResponse:
     log.error("%s", exc)
     return _error(502, exc)

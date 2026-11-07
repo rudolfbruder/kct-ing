@@ -5,7 +5,7 @@ from services.control_testing.agents.prompt_file_agent import PromptFileAgent
 
 
 class SummaryAgent(PromptFileAgent):
-    """Shared by the Stage 1 summary agents: same token limit, plain Markdown output."""
+    """Shared by the interpretation's summary agents: same token limit, plain Markdown output."""
 
     @property
     def max_tokens(self) -> int:

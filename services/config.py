@@ -37,7 +37,7 @@ class Settings:
     gcs_bucket: str
     gcs_prefix: str  # optional folder inside the bucket
 
-    # Database: "sqlite" (local file) or "bigquery".
+    # Database: "memory" (default, nothing stored), "sqlite" (local file) or "bigquery".
     db_driver: str
     db_path: Path  # SQLite file
     bq_dataset: str  # "dataset" in gcp_project, or "project.dataset"
@@ -52,8 +52,34 @@ class Settings:
         return self.storage_root / "logs"
 
 
+def load_env_file(path: Path | None = None) -> None:
+    """Read KEY=VALUE lines from .env into the environment (no python-dotenv needed).
+
+    Variables already set in the environment win, so a notebook cell or the
+    shell can override .env. KCT_ENV_FILE picks another file; empty disables it.
+    """
+    if path is None:
+        name = os.environ.get("KCT_ENV_FILE", str(BASE / ".env"))
+        if not name:
+            return
+        path = Path(name)
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line.startswith("export "):
+            line = line[len("export "):]
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        value = value.strip().strip('"').strip("'")
+        if value:
+            os.environ.setdefault(key.strip(), value)
+
+
 @lru_cache(maxsize=1)
 def settings() -> Settings:
+    load_env_file()
     provider = os.environ.get("KCT_AI_PROVIDER", "gemini").lower()
     if provider not in DEFAULT_MODELS:
         raise ValueError(f"KCT_AI_PROVIDER must be one of {sorted(DEFAULT_MODELS)}, got {provider!r}")
@@ -73,7 +99,7 @@ def settings() -> Settings:
         files_driver=os.environ.get("KCT_FILES_DRIVER", "local").lower(),
         gcs_bucket=os.environ.get("KCT_GCS_BUCKET", ""),
         gcs_prefix=os.environ.get("KCT_GCS_PREFIX", ""),
-        db_driver=os.environ.get("KCT_DB_DRIVER", "sqlite").lower(),
+        db_driver=os.environ.get("KCT_DB_DRIVER", "memory").lower(),
         db_path=Path(os.environ.get("KCT_DB_PATH", storage_root / "database.sqlite")),
         bq_dataset=os.environ.get("KCT_BQ_DATASET", ""),
         bq_location=os.environ.get("KCT_BQ_LOCATION", ""),

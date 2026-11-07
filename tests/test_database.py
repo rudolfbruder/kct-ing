@@ -97,5 +97,28 @@ class SqliteRepositoryTest(unittest.TestCase):
         )
 
 
+
+class MemoryRepositoryTest(unittest.TestCase):
+    def test_reads_like_the_other_drivers_and_writes_no_file(self) -> None:
+        from services.database.drivers.memory import MemoryRepository
+
+        db = MemoryRepository()
+        first = db.create_interpretation("case-001", "fake", "fake", SUMMARIES, [draft("A"), draft("B")])
+        second = db.create_interpretation("case-001", "fake", "fake", SUMMARIES, [draft("A")])
+        self.assertEqual(first.metadata.step_count, 2)
+        self.assertEqual(first.metadata.case_id, second.metadata.case_id)
+        self.assertEqual(len(first.test_steps[0].id), 36)
+        self.assertEqual(first.test_steps[0].status, "pending")
+        self.assertEqual(db.find_interpretation(first.metadata.case_interpretation_id), first)
+        self.assertEqual(db.latest_interpretation("case-001"), second)
+        self.assertEqual(
+            [m.case_interpretation_id for m in db.interpretations()],
+            [second.metadata.case_interpretation_id, first.metadata.case_interpretation_id],
+        )
+        with self.assertRaises(RecordNotFoundError):
+            db.latest_interpretation("case-404")
+
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -171,5 +171,6 @@ class BigQueryRepositoryTest(unittest.TestCase):
             self.db.latest_interpretation("case-404")
 
 
+
 if __name__ == "__main__":
     unittest.main()

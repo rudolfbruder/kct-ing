@@ -27,14 +27,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from services.control_testing.data import CaseInterpretation  # noqa: E402
-from services.database import manager  # noqa: E402
+from services.app import boot  # noqa: E402
 from services.database.exceptions import RecordNotFoundError  # noqa: E402
 
 WIDTH = 100
 
 
 def load(case_interpretation_id: str) -> CaseInterpretation:
-    return manager.repository().find_interpretation(case_interpretation_id)
+    return boot().database.find_interpretation(case_interpretation_id)
 
 
 def render(interpretation: CaseInterpretation) -> str:
@@ -86,7 +86,7 @@ def table(case_interpretation_id: str):
 
 
 def list_interpretations() -> str:
-    rows = manager.repository().interpretations()
+    rows = boot().database.interpretations()
     if not rows:
         return "No case interpretations yet. Run POST /api/v1/test-steps first."
     header = f"{'case_interpretation_id':<36}  {'case':<9}  {'steps':>5}  {'provider/model':<28}  created_at"

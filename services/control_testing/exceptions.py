@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-class StageFailedError(Exception):
+class InterpretationFailedError(Exception):
     """An agent failed while processing a stored case. The case's files are kept."""
 
     def __init__(self, case_id: str, cause: Exception) -> None:

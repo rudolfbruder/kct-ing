@@ -23,7 +23,7 @@ class CaseInterpretationRepository(Protocol):
         summaries: Dict[str, str],
         steps: List[TestStepDraft],
     ) -> CaseInterpretation:
-        """Saves one Stage 2 run and its test steps in a single transaction.
+        """Saves one interpretation run and its test steps in a single transaction.
 
         Creates the case row on first use. Returns the run with database IDs.
         """

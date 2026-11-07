@@ -6,7 +6,7 @@ from services.control_testing.data import TestStepList
 
 
 class TestStepsAgent(PromptFileAgent):
-    """Stage 2: control details + test plan PDFs to test steps for Stage 3.
+    """Interpretation: control details + test plan PDFs to test steps for the assessment.
 
     Instructions: prompts/test_steps.md
     Output: TestStepList (services/control_testing/data.py)

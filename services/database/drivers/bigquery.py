@@ -3,12 +3,12 @@
 Same three tables as the SQLite driver, in the dataset KCT_BQ_DATASET:
 
     cases                  one row per uploaded case (reference = case-001)
-    case_interpretations   one row per Stage 2 run over a case
+    case_interpretations   one row per interpretation run over a case
     test_steps             the steps of one interpretation
 
 BigQuery has no auto-increment, so IDs are UUIDs made in Python. Rows are
 written with DML INSERT inside one transaction, never with streaming inserts:
-streamed rows cannot be updated for up to 90 minutes, and Stage 3 updates
+streamed rows cannot be updated for up to 90 minutes, and the assessment updates
 each step's status. Tables are created on first use; the dataset must exist.
 """
 from __future__ import annotations

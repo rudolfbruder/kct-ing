@@ -1,4 +1,4 @@
-"""Stored case interpretations (Stage 2 runs) and their test steps."""
+"""Stored case interpretations (interpretation runs) and their test steps."""
 from __future__ import annotations
 
 from typing import List, Optional

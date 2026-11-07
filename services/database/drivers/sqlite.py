@@ -3,7 +3,7 @@
 Tables:
 
     cases                  one row per uploaded case (reference = case-001)
-    case_interpretations   one row per Stage 2 run over a case
+    case_interpretations   one row per interpretation run over a case
     test_steps             the steps of one interpretation
 
 IDs are UUIDs, as on BigQuery, so data looks the same on every driver.

@@ -1,0 +1,36 @@
+# docker compose up api       API on http://localhost:8000/docs
+# docker compose up jupyter   JupyterLab on http://localhost:8888
+#
+# Settings come from .env (copy .env.example). Google credentials come from
+# your gcloud login on this machine (see README: "Run with Docker").
+
+x-kct: &kct
+  build: .
+  image: kct
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    # No .env yet: run without cloud access.
+    KCT_AI_PROVIDER: ${KCT_AI_PROVIDER:-fake}
+  volumes:
+    # The project folder, so code edits and storage/ show up without a rebuild.
+    - .:/app
+    # Application Default Credentials from `gcloud auth application-default login`.
+    - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
+
+services:
+  api:
+    <<: *kct
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "127.0.0.1:${KCT_API_PORT:-8000}:8000"
+
+  jupyter:
+    <<: *kct
+    # No token: the port is bound to this machine only.
+    command: >
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+      --ServerApp.token= --ServerApp.root_dir=/app
+    ports:
+      - "127.0.0.1:${KCT_JUPYTER_PORT:-8888}:8888"

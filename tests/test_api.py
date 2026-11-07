@@ -9,6 +9,7 @@ from pathlib import Path
 
 # Settings are read once, so set them before importing the app.
 STORAGE = Path(tempfile.mkdtemp(prefix="kct-test-"))
+os.environ["KCT_ENV_FILE"] = ""  # never read the developer's .env
 os.environ["KCT_AI_PROVIDER"] = "fake"
 os.environ["KCT_STORAGE_ROOT"] = str(STORAGE)
 
@@ -65,7 +66,7 @@ class TestStepsApiTest(unittest.TestCase):
         self.assertEqual(saved, body)
         self.assertTrue((outputs / "control_details_summary.md").is_file())
         self.assertTrue((outputs / "test_plan_summary.md").is_file())
-        self.assertTrue((STORAGE / "database.sqlite").is_file())
+        self.assertFalse((STORAGE / "database.sqlite").exists())  # memory driver by default
 
         calls = [json.loads(line) for line in (STORAGE / "logs" / "agents.log").read_text().splitlines()]
         self.assertIn("test_steps", {c["agent"] for c in calls})
@@ -158,6 +159,19 @@ class AgentTest(unittest.TestCase):
             self.assertEqual(EchoAgent().prompt("x").text, "two")
         finally:
             EchoAgent.stop_faking()
+
+
+class AskTest(unittest.TestCase):
+    def test_api_and_service_give_the_same_answer(self) -> None:
+        from services.app import boot
+
+        body = TestClient(app).post("/api/v1/ask", json={"question": "What is 5+2?"}).json()
+        self.assertEqual(body["answer"], "5 + 2 = 7.")
+        self.assertEqual(body["provider"], "fake")
+
+        result = boot().ask.ask("What is 5+2?")
+        self.assertEqual(result.answer, body["answer"])
+
 
 
 if __name__ == "__main__":

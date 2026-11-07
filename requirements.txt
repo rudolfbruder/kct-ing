@@ -16,3 +16,6 @@ google-cloud-bigquery==3.41.0 # KCT_DB_DRIVER=bigquery
 
 # Tests only (fastapi.testclient)
 httpx==0.28.1
+
+# Notebooks only (tables in notebooks/06_database.ipynb and scripts/test_steps.py table())
+# pandas==2.3.3

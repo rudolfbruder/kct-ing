@@ -37,7 +37,7 @@ class TestStepList(BaseModel):
 
 
 class TestStep(BaseModel):
-    """A stored test step. Stage 3 changes status from pending to the verdict."""
+    """A stored test step. The assessment changes status from pending to the verdict."""
 
     # IDs are UUIDs made when the row is saved, the same on every database driver.
     id: str
@@ -52,7 +52,7 @@ class TestStep(BaseModel):
 
 
 class CaseInterpretationMetadata(BaseModel):
-    """Header of one Stage 2 run over a case."""
+    """Header of one interpretation run over a case."""
 
     case_interpretation_id: str
     case_id: str
@@ -65,7 +65,7 @@ class CaseInterpretationMetadata(BaseModel):
 
 
 class CaseInterpretation(BaseModel):
-    """One Stage 2 run: its metadata, the two summaries and the test steps."""
+    """One interpretation run: its metadata, the two summaries and the test steps."""
 
     metadata: CaseInterpretationMetadata
     summaries: Dict[str, str]
