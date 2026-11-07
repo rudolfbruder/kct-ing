@@ -36,8 +36,12 @@ delivery   ●── 01 ──── 02 ──── 03 ──── …     one
    handed over, its commit, tag and branch stay as they are.
 5. **Undelivered releases may be rewritten** (they never left this machine), as long as
    rules 2 and 3 still hold for each of them afterwards.
-6. No real ING data in the repository (evidence is C3 confidential); fake data only,
-   made with `factories/` where they exist.
+6. No real ING data in the repository (evidence is C3 confidential, the repository is
+   public); fake data only, made with `factories/` where they exist. Never commit
+   secrets (`.env`, service-account keys), databases, logs, documents or ZIPs, and
+   commit notebooks without outputs (Clear All Outputs, then save).
+   `.gitignore` keeps most of it out; `tests/test_repository_hygiene.py` fails if any
+   of it is committed.
 
 ### Adding the next release
 

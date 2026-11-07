@@ -1,11 +1,42 @@
-# Runtime data — never commit. Real evidence must not reach the repo.
+# Runtime data: never commit. Real evidence must not reach the repo.
 storage/
 !storage/.gitkeep
 
+# Databases and logs, wherever they are (KCT_DB_PATH can point outside storage/)
+*.sqlite
+*.sqlite3
+*.db
+*.log
+
 # Secrets
 .env
+.env.*
+!.env.example
 *.pem
 *.key
+*.p12
+*.pfx
+# Google service account keys and login files
+key.json
+*-key.json
+*credentials*.json
+*service-account*.json
+*service_account*.json
+
+# Documents and archives: control documents, evidence and SharePoint downloads are C3
+# confidential and must never be committed. Fake ones are made by factories/ when needed.
+*.zip
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.xlsm
+*.msg
+*.eml
+*.ppt
+*.pptx
+!tests/fixtures/**
 
 # Python
 __pycache__/
@@ -15,7 +46,7 @@ venv/
 .pytest_cache/
 .ruff_cache/
 
-# Notebooks: clear outputs before committing
+# Notebooks: commit them without outputs (tests/test_repository_hygiene.py checks it)
 .ipynb_checkpoints/
 
 # OS
