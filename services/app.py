@@ -6,6 +6,7 @@ Notebook (kernel in the project folder, or see notebooks/02_hello.ipynb):
     kct = boot()                       # reads KCT_* env vars, sets up logging
     kct.ask.ask("What is 5+2?").answer
     kct.interpretations.create_and_generate(["CD.pdf"], ["TP.pdf"])
+    kct.evidences.case("case-001").store([...])
     kct.database.interpretations()
 
 routes/api.py uses the same object, so API and notebook run identical code.
@@ -23,6 +24,7 @@ from services.database import manager as database_manager
 from services.database.contracts import CaseInterpretationRepository
 from services.evidences.docx_converter import DocxConverter
 from services.evidences.evidence_service import EvidenceService
+from services.evidences.evidence_splitter import EvidenceSplitter
 from services.evidences.excel_converter import ExcelConverter
 from services.evidences.msg_converter import MsgConverter
 from services.files.file_service import FileService
@@ -50,7 +52,8 @@ def boot() -> App:
     docx_converter = DocxConverter()
     excel_converter = ExcelConverter()
     msg_converter = MsgConverter(docx_converter, excel_converter)
-    evidences = EvidenceService(settings().evidences_root, docx_converter, excel_converter, msg_converter)
+    evidences = EvidenceService(settings().evidences_root, docx_converter, excel_converter, msg_converter,
+                                EvidenceSplitter.from_settings(settings()))
     return App(
         files=files,
         database=database,

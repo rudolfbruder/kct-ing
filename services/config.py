@@ -46,6 +46,11 @@ class Settings:
     storage_root: Path
     # Evidence documents (assessment). Production layout unknown yet; default storage/evidences.
     evidences_root: Path
+    # Splitting evidence into parts the model reads well (see services/evidences/evidence_splitter.py).
+    pdf_max_pages: int
+    pdf_max_mb: float
+    pdf_overlap_pages: int
+    evidence_max_tokens: int
     prompts_root: Path
     fixtures_root: Path
 
@@ -107,6 +112,10 @@ def settings() -> Settings:
         bq_location=os.environ.get("KCT_BQ_LOCATION", ""),
         storage_root=storage_root,
         evidences_root=Path(os.environ.get("KCT_EVIDENCES_ROOT", storage_root / "evidences")),
+        pdf_max_pages=int(os.environ.get("KCT_PDF_MAX_PAGES", "50")),
+        pdf_max_mb=float(os.environ.get("KCT_PDF_MAX_MB", "20")),
+        pdf_overlap_pages=int(os.environ.get("KCT_PDF_OVERLAP_PAGES", "2")),
+        evidence_max_tokens=int(os.environ.get("KCT_EVIDENCE_MAX_TOKENS", "300000")),
         prompts_root=Path(os.environ.get("KCT_PROMPTS_ROOT", BASE / "prompts")),
         fixtures_root=Path(os.environ.get("KCT_FIXTURES_ROOT", BASE / "tests" / "fixtures" / "fake_ai")),
     )

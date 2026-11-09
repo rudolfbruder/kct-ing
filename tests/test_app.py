@@ -52,7 +52,7 @@ class AppTest(unittest.TestCase):
         app = KctApp(boot())
         self.assertEqual([t.split(" · ")[0] for t in app.titles],
                          ["1 Case", "2 Test steps", "3 Evidence", "4 Assess", "5 Result", "History"])
-        self.assertEqual(app.available, ["1 Case", "2 Test steps"])
+        self.assertEqual(app.available, ["1 Case", "2 Test steps", "3 Evidence"])
         self.assertEqual([t for t in app.titles if t.endswith("· soon")], app.titles[len(app.available):-1])
         self.assertEqual(len(app.next_buttons), len(app.available) - 1)   # no "Next" into a tab that is not there
         soon = [b for b in app.header.children[-1].children if getattr(b, "disabled", False)]
@@ -69,6 +69,13 @@ class AppTest(unittest.TestCase):
         self.assertEqual(app.step_picker.value, interpretation.test_steps[0].id)   # first step shown
         self.assertEqual(app.step_picker.style.description_width, "initial")      # label not pushed right
         self.assertIsNotNone(app.show_steps())
+
+    def test_evidence(self) -> None:
+        app = KctApp(boot())
+        new_case(app)
+        app.upload_evidence([("extra note.txt", b"Reviewed on 2026-03-31.")], folder="notes")
+        self.assertIn(Path("notes/extra note.txt"), app.show_evidence())
+        self.assertGreaterEqual(len(app.show_parts()), 1)
 
     def test_each_upload_is_a_new_run(self) -> None:
         app = KctApp(boot())

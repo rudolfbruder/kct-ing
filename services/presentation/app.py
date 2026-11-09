@@ -9,6 +9,7 @@ later releases are shown greyed out, marked "soon":
 
     1 Case         upload the control details and the test plan (PDF) -> a new case
     2 Test steps   run the interpretation, browse the steps and their criteria
+    3 Evidence     the case's evidence files, upload more, see the parts the AI gets
 
 After each step a "Next" button leads to the next tab.
 Every button calls a plain method (create_case, interpret, ...), so the same work can be done
@@ -188,9 +189,24 @@ class KctApp:
                    "test steps, each with the criteria it must meet.</div>"),
             w.HBox([self.interpret_button, self.latest_button]), self.steps_out, self.step_picker, self.step_out]))
 
+        # 3 Evidence
+        self.evidence_upload = w.FileUpload(multiple=True, description="Add files",
+                                            accept=".docx,.xlsx,.xlsm,.msg,.pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv")
+        self.evidence_folder = w.Text(placeholder="optional subfolder, e.g. q1", layout=w.Layout(width="30%"))
+        self.upload_button = w.Button(description="Upload", icon="upload")
+        self.upload_button.on_click(lambda _: self._safe(self.evidence_out, self._upload_clicked))
+        self.parts_button = w.Button(description="Show parts for the AI", icon="th")
+        self.parts_button.on_click(lambda _: self._safe(self.evidence_out, self.show_parts))
+        self.evidence_out = w.Output()
+        self._style(self.evidence_upload, self.evidence_folder, self.upload_button, self.parts_button)
+        panels.append(("3 Evidence", [
+            w.HTML("<div class='kct-hint'>The evidence of the case. Big files are split into parts before the AI "
+                   "reads them.</div>"),
+            w.HBox([self.evidence_upload, self.evidence_folder, self.upload_button, self.parts_button]),
+            self.evidence_out]))
+
         # tabs of later releases: shown greyed out, with what they will do
         soon = []
-        soon.append(("3 Evidence", "Upload the evidence of the case and see how big files are split for the AI."))
         soon.append(("4 Assess", "Check every piece of evidence against every test step, with a live progress bar."))
         soon.append(("5 Result", "The verdict of every test step, with its exceptions and a read-only PDF report."))
         self.available = [name for name, _ in panels]
@@ -215,6 +231,7 @@ class KctApp:
         history_panel = w.VBox([
             w.HTML("<div class='kct-hint'>The earlier runs (case interpretations) of the case chosen at the top, "
                    "newest first; tick <b>All cases</b> for every case. For each: its documents and test steps"
+                   ", the case's evidence"
                    ". Nothing is sent to the AI here.</div>"),
             w.HBox([self.history_picker, self.history_all, self.history_refresh]), self.use_button, self.history_out,
             self.history_step_picker, self.history_step_out])
@@ -352,6 +369,40 @@ class KctApp:
         self._render_steps(interpretation)
         return interpretation
 
+    def upload_evidence(self, files: List[tuple], folder: str = ""):
+        from services.files.file_service import UploadedFile
+
+        case = self._need_case()
+        stored = self.kct.evidences.case(case).store([UploadedFile(name=n, data=d) for n, d in files], folder)
+        self.show_evidence(note=f"Uploaded {len(stored)} file(s).")
+        return stored
+
+    def show_evidence(self, note: str = ""):
+        case = self._need_case()
+        evidence = self.kct.evidences.case(case)
+        files = evidence.evidence_files()
+        rows = "".join(f"<div>{show._icon(str(p))} {show.escape(str(p))} "
+                       f"<span style='color:{show.GREY}'>({evidence.path(p).stat().st_size / 1024:.0f} KB)</span></div>"
+                       for p in files)
+        body = rows or "<i>No evidence yet: add files above.</i>"
+        self._show(self.evidence_out, show._html(
+            f"<div style='{show.CARD}'>" + (f"<div style='color:{show.GREEN}'>{show.escape(note)}</div>" if note else "")
+            + f"<b>{len(files)} evidence file(s)</b>{body}</div>"))
+        if files:
+            self._ready(2)
+        return files
+
+    def show_parts(self):
+        case = self._need_case()
+        with self._busy(self.evidence_out, "Converting and splitting the evidence …", self.parts_button):
+            parts = self.kct.evidences.case(case).parts()
+        rows = "".join(f"<tr><td>{show.escape(p.label)}</td><td>{len(p.documents)}</td>"
+                       f"<td>~{p.estimated_tokens:,}</td></tr>" for p in parts)
+        self._show(self.evidence_out, show._html(
+            f"<div style='{show.CARD}'><b>{len(parts)} part(s): one AI call each</b><table>"
+            f"<tr><th>Part</th><th>Documents</th><th>Tokens</th></tr>{rows}</table></div>"))
+        return parts
+
     def history(self) -> list:
         """The earlier runs (case interpretations) of the current case, or of all cases; newest first."""
         if not self.history_all.value and not self.case:
@@ -408,6 +459,10 @@ class KctApp:
                 display(show.notice(self._history_hint(""), "warn"))
             display(header)
             display(show.test_steps(interpretation))
+            files = self.kct.evidences.case(case).evidence_files()
+            display(show._html(f"<div style='{show.CARD}'><b>Evidence of the case now ({len(files)})</b>"
+                               + "".join(f"<div>{show._icon(str(p))} {show.escape(str(p))}</div>" for p in files)
+                               + "</div>"))
         self._history_steps = {s.id: s for s in interpretation.test_steps}
         self.history_step_picker.options = [(f"{s.reference}: {s.title}", s.id) for s in interpretation.test_steps]
         if interpretation.test_steps:
@@ -434,6 +489,13 @@ class KctApp:
     def _run_clicked(self) -> None:
         control_details, test_plan = _uploads(self.cd_upload.value), _uploads(self.tp_upload.value)
         self.new_run(control_details[0] if control_details else None, test_plan[0] if test_plan else None)
+
+    def _upload_clicked(self) -> None:
+        files = _uploads(self.evidence_upload.value)
+        if not files:
+            self._show(self.evidence_out, show.notice("Choose evidence files first.", "warn"))
+            return
+        self.upload_evidence(files, self.evidence_folder.value.strip())
 
     def _open_fresh(self, case: str) -> None:
         """After an upload: a new run. Nothing of earlier runs is shown (test steps, results)."""
@@ -472,13 +534,14 @@ class KctApp:
             return
         self._safe(self.case_out, self._case_card, case)
         # every run starts clean: earlier test steps and results stay saved, but are not shown
+        self._safe(self.evidence_out, self.show_evidence)
         self._show(self.steps_out, show.notice(
             "New run: click 'Make test steps'." if fresh else
             "Click 'Make test steps' for a new run, or 'Show latest' to continue with the last saved test steps.",
             "info"))
 
     def _outputs(self) -> list:
-        return [self.case_out, self.case_info, self.steps_out, self.step_out]
+        return [self.case_out, self.case_info, self.steps_out, self.step_out, self.evidence_out]
 
     def _ready(self, index: int) -> None:
         """Step `index` is done: show its "Next" button (the last tab has none)."""

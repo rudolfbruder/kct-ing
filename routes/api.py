@@ -8,6 +8,12 @@ from fastapi import APIRouter
 from controllers.ask_controller import AskController
 from controllers.case_interpretations_controller import CaseInterpretationsController
 from controllers.cases_controller import CasesController
+from controllers.evidences_controller import (
+    EvidenceFileModel,
+    EvidencePartModel,
+    EvidencesController,
+    EvidenceUploadResult,
+)
 from controllers.summary_controller import SummaryController
 from controllers.test_steps_controller import TestStepsController
 from services.app import boot
@@ -24,6 +30,7 @@ summaries = SummaryController(kct.summaries)
 test_steps = TestStepsController(kct.interpretations)
 interpretations = CaseInterpretationsController(kct.database)
 ask = AskController(kct.ask)
+evidences = EvidencesController(kct.files, kct.evidences)
 
 router = APIRouter(prefix="/api/v1")
 
@@ -54,4 +61,15 @@ router.add_api_route(
     interpretations.show,
     methods=["GET"],
     response_model=CaseInterpretation,
+)
+
+# Evidence of a case
+router.add_api_route(
+    "/cases/{case_id}/evidences", evidences.store, methods=["POST"], response_model=EvidenceUploadResult
+)
+router.add_api_route(
+    "/cases/{case_id}/evidences", evidences.index, methods=["GET"], response_model=List[EvidenceFileModel]
+)
+router.add_api_route(
+    "/cases/{case_id}/evidences/parts", evidences.parts, methods=["GET"], response_model=List[EvidencePartModel]
 )
