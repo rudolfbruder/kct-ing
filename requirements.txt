@@ -9,6 +9,8 @@ python-multipart==0.0.20
 # Only the provider you use needs to be installed:
 google-genai==1.47.0          # KCT_AI_PROVIDER=gemini
 anthropic[vertex]==0.125.0    # KCT_AI_PROVIDER=anthropic
+# The clickable app in Jupyter (KCT_App.ipynb)
+ipywidgets==8.1.9
 
 # Only the storage you use needs to be installed:
 google-cloud-storage==3.9.0   # KCT_FILES_DRIVER=gcs

@@ -27,6 +27,25 @@ says otherwise.
 | 04 | `04_demo_data.ipynb` | Interpretation end to end: two PDFs in, summaries and 17 test steps saved to the database |
 | 05 | `05_test_steps.ipynb` | The test steps of a run, as text, table and JSON |
 | 06 | `06_database.ipynb` | The database as tables, without a database GUI |
+| App | `KCT_App.ipynb` (project root) | **The clickable app**: tabs for case, test steps; no code to type |
+
+## The clickable app (Jupyter)
+
+`KCT_App.ipynb` in the project root is the work on one control as an app inside Jupyter: no web
+server, no open port, so it works on the ING machine where no web page can be opened. Run all
+cells and use the tabs; after each step a **Next** button leads to the next tab.
+Tabs and buttons of later releases are shown greyed out, marked 'soon'.
+
+| Tab | What you do |
+|---|---|
+| 1 Case | Pick a case in the **Case** list, choose the control details and the test plan (PDF), **Make test steps** (a new run). New control: **+ New case**, just a name |
+| 2 Test steps | **Make test steps**, then pick a step to see its pass and fail criteria |
+| History | Every earlier run: its documents and test steps; **Continue with these test steps** uses them again without the AI |
+
+`MODE` in the first cell: `fake` (sample answers after 1-3 seconds) or `live` (Gemini from `.env`).
+It is built with `ipywidgets` (`services/presentation/app.py`, class `KctApp`); every button
+calls a plain method (`create_case`, `interpret`),
+so the same steps work from code, and the services do the work as everywhere else.
 
 ## Ways to run it
 
@@ -191,6 +210,7 @@ What to install in ING, and what not:
 | `pydantic` | Everything | Usually there already; must be version 2.x (`pip install --user "pydantic>=2"` if 1.x) |
 | `google-genai` | Gemini (`KCT_AI_PROVIDER=gemini`) | Yes, if missing |
 | `pandas` | `06_database.ipynb`, `table()` | Usually there already |
+| `ipywidgets` | `KCT_App.ipynb` (the clickable app) | Usually there with Jupyter; else yes |
 | `fastapi`, `uvicorn`, `python-multipart` | Only the API | Only if you run the API |
 | `anthropic[vertex]` | Only Claude | Only if you use Claude |
 | `google-cloud-storage`, `google-cloud-bigquery` | Only `gcs` / `bigquery` drivers | Not now (no storage approved) |
@@ -201,7 +221,7 @@ What to install in ING, and what not:
 
    ```bash
    pip list | grep -i -E "pydantic|google-genai|pandas|fastapi|uvicorn|multipart"
-   pip install --user google-genai pydantic    # notebooks
+   pip install --user google-genai pydantic ipywidgets    # notebooks
    pip install --user fastapi uvicorn python-multipart   # only for the API
    ```
 
@@ -308,6 +328,9 @@ Set `KCT_AI_PROVIDER`; every agent then runs on that provider. Nothing else chan
 | `gemini` (default) | Gemini on Vertex AI | `KCT_PROJECT_ID`, `google-genai` |
 | `anthropic` | Claude on Vertex AI (`KCT_ANTHROPIC_PLATFORM=vertex`) or the Anthropic API (`api`) | `KCT_PROJECT_ID` or `ANTHROPIC_API_KEY`, `anthropic[vertex]` |
 | `fake` | Fixture files in `tests/fixtures/fake_ai/` | nothing |
+
+With `fake`, `KCT_FAKE_DELAY=1-3` waits a random 1 to 3 seconds per answer, so the app's
+loaders show as with a real model (the app's fake mode sets it; empty = no wait).
 
 `KCT_AI_MODEL` picks the model, for example `gemini-2.5-pro`, `claude-opus-5-5`
 or `claude-sonnet-5-5`. Which Claude models your project can use depends on
@@ -715,6 +738,8 @@ controllers/
   cases_controller.py           Health, case listings
 bootstrap/logging.py            app.log and agents.log
 services/
+  presentation/notebook.py      Visual blocks for notebooks and the app (cards, test steps)
+  presentation/app.py           KctApp: the clickable app in Jupyter (ipywidgets)
   app.py                        boot(): builds every service; used by routes/api.py and notebooks
   config.py                     All settings, read from env
   playground/ask_service.py     AskService: one question to the provider (smoke test)
@@ -737,6 +762,7 @@ services/
     agents/                     One file per agent, e.g. test_steps_agent.py
     data.py                     TestStep, CaseInterpretation and other data shapes
 scripts/test_steps.py           Print test steps of a case interpretation
+KCT_App.ipynb                   The clickable app in Jupyter
 notebooks/                      Demo notebooks, run them in order:
   01_setup.ipynb                Setup and checks, one cell per step (no terminal needed)
   02_hello.ipynb                Asks "What is 5+2?" through AskService

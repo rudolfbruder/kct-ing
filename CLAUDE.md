@@ -29,7 +29,9 @@ delivery   ●── 01 ──── 02 ──── 03 ──── …     one
    together), with its tag and branch.
 2. **Every release stands on its own**: the code, tests, notebooks, README and
    `.env.example` describe only what exists at that release. Nothing of a later release
-   may leak into an earlier one, not even in the README.
+   may leak into an earlier one, not even in the README. One exception: the app
+   (`KCT_App.ipynb`) shows the tabs and buttons of later releases greyed out, marked
+   "soon", so the whole path is visible from the first release with the app.
 3. **Tests pass and every notebook runs at every release**, checked before tagging and
    before pushing:
    ```bash

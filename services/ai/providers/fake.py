@@ -8,6 +8,9 @@ max_tokens comes back truncated, so a too-low limit fails the same way.
 """
 from __future__ import annotations
 
+import os
+import random
+import time
 from pathlib import Path
 
 from services.ai.exceptions import AiConfigurationError
@@ -26,7 +29,16 @@ class FakeProvider:
     def __init__(self, fixtures: Path) -> None:
         self.fixtures = fixtures
 
+    @staticmethod
+    def _pause() -> None:
+        """KCT_FAKE_DELAY="1-3": wait a random 1 to 3 seconds, like a real model, so loaders can be seen."""
+        raw = os.environ.get("KCT_FAKE_DELAY", "").strip()
+        if raw:
+            low, _, high = raw.partition("-")
+            time.sleep(random.uniform(float(low), float(high or low)))
+
     def prompt(self, request: ProviderRequest) -> ProviderResponse:
+        self._pause()
         text = self._fixture(request.agent).read_text(encoding="utf-8")
 
         # Vertex bills a PDF at about 258 tokens per page; assume ~50 KB a page.

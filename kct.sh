@@ -27,7 +27,7 @@ fi
 export KCT_AI_PROVIDER="${KCT_AI_PROVIDER:-fake}"
 
 # Python import name, pip requirement
-NOTEBOOK_PACKAGES=("pydantic:pydantic>=2" "google.genai:google-genai" "pandas:pandas")
+NOTEBOOK_PACKAGES=("pydantic:pydantic>=2" "google.genai:google-genai" "pandas:pandas" "ipywidgets:ipywidgets")
 API_PACKAGES=("fastapi:fastapi" "uvicorn:uvicorn" "multipart:python-multipart" "httpx:httpx")
 CLAUDE_PACKAGES=("anthropic:anthropic[vertex]")
 

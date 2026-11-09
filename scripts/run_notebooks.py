@@ -1,6 +1,6 @@
 """Run every notebook in order: the check before tagging or pushing a release.
 
-    python scripts/run_notebooks.py            all notebooks in order, then DEMO.ipynb if there is one
+    python scripts/run_notebooks.py            all notebooks in order, then those in the project root (DEMO, KCT_App)
     python scripts/run_notebooks.py 04 05      only the notebooks starting with these numbers
 
 Runs in a new temporary storage folder with the fake AI and SQLite: your storage, database and
@@ -31,8 +31,7 @@ def main(prefixes: list) -> int:
         return 2
 
     notebooks = sorted((ROOT / "notebooks").glob("[0-9][0-9]_*.ipynb"))
-    if (ROOT / "DEMO.ipynb").exists():
-        notebooks.append(ROOT / "DEMO.ipynb")
+    notebooks += sorted(ROOT.glob("*.ipynb"))          # DEMO.ipynb, KCT_App.ipynb
     if prefixes:
         notebooks = [n for n in notebooks if any(n.name.startswith(p) for p in prefixes)]
 

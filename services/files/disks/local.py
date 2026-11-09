@@ -28,6 +28,9 @@ class LocalDisk:
             return []
         return sorted(p.name for p in folder.iterdir() if p.is_file())
 
+    def delete(self, path: str) -> None:
+        (self.root / path).unlink(missing_ok=True)
+
     def directories(self, directory: str) -> List[str]:
         folder = self.root / directory
         if not folder.is_dir():
