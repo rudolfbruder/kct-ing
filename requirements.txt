@@ -9,6 +9,14 @@ python-multipart==0.0.20
 # Only the provider you use needs to be installed:
 google-genai==1.47.0          # KCT_AI_PROVIDER=gemini
 anthropic[vertex]==0.125.0    # KCT_AI_PROVIDER=anthropic
+
+# Evidence .docx to PDF (notebooks/07_evidence_word_to_pdf.ipynb, services/evidences/)
+python-docx==1.2.0
+reportlab==5.1.0
+# Evidence Excel to text (notebooks/08_evidence_excel.ipynb)
+openpyxl==3.1.5
+# Evidence Outlook emails .msg (notebooks/09_evidence_email.ipynb). GPL-3.0 licensed.
+extract-msg==0.58.2
 # The clickable app in Jupyter (KCT_App.ipynb)
 ipywidgets==8.1.9
 

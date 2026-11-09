@@ -31,18 +31,7 @@ class AnthropicProvider:
             )
 
     def prompt(self, request: ProviderRequest) -> ProviderResponse:
-        content: list[dict] = [
-            {
-                "type": "document",
-                "title": doc.title,
-                "source": {
-                    "type": "base64",
-                    "media_type": doc.mime_type,
-                    "data": base64.standard_b64encode(doc.data).decode("ascii"),
-                },
-            }
-            for doc in request.attachments
-        ]
+        content: list[dict] = [block for doc in request.attachments for block in _attachment(doc)]
         content.append({"type": "text", "text": request.prompt})
 
         params: dict = {
@@ -78,3 +67,32 @@ class AnthropicProvider:
             ),
             truncated=message.stop_reason == "max_tokens",
         )
+
+
+def _attachment(doc) -> list[dict]:
+    """PDF and text become document blocks (with title); images become image blocks."""
+    if doc.is_image:
+        # Image blocks have no title, so name the image in a text block before it.
+        return [{"type": "text", "text": f"Image: {doc.title}"}, {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": doc.mime_type,
+                "data": base64.standard_b64encode(doc.data).decode("ascii"),
+            },
+        }]
+    if doc.is_text:
+        return [{
+            "type": "document",
+            "title": doc.title,
+            "source": {"type": "text", "media_type": "text/plain", "data": doc.data.decode("utf-8")},
+        }]
+    return [{
+        "type": "document",
+        "title": doc.title,
+        "source": {
+            "type": "base64",
+            "media_type": doc.mime_type,
+            "data": base64.standard_b64encode(doc.data).decode("ascii"),
+        },
+    }]
