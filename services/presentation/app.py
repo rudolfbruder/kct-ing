@@ -15,6 +15,7 @@ later releases are shown greyed out, marked "soon":
     5 Result       verdicts, traceability matrix, exceptions, trust panel, the PDF
 
 After each step a "Next" button leads to the next tab.
+"Run all" in the header does everything after tab 1 in one click.
 Every button calls a plain method (create_case, interpret, ...), so the same work can be done
 from code and is tested without a screen. All work is done by the app's services, exactly as
 through the API or the other notebooks. Needs ipywidgets (it comes with most Jupyter installations).
@@ -142,7 +143,11 @@ class KctApp:
         self.refresh_button.on_click(lambda _: self.refresh_cases())
         self._style(self.case_picker, self.refresh_button)
         header_row = [self.case_picker, self.refresh_button]
-        header_row.append(self._soon_button("Run all", "forward", "Tabs 2 to 5 in one click"))
+        self.run_all_button = w.Button(description="Run all", icon="forward",
+                                       tooltip="Test steps, then the assessment, then the result: one click")
+        self.run_all_button.on_click(lambda _: self._safe(self.assess_out, self.run_all))
+        self._style(primary=[self.run_all_button])
+        header_row.append(self.run_all_button)
 
         # 1 Case
         self.case_out = w.Output()
@@ -460,6 +465,15 @@ class KctApp:
         self._list_runs(select=assessment.metadata.assessment_id)
         self.go(4)
         return assessment
+
+    def run_all(self):
+        """Test steps, then the assessment of all evidence, then the result: what tabs 2 to 5 do, in one go."""
+        case = self._need_case()
+        self.go(3)
+        with self._busy(self.assess_out, f"Making the test steps of {case} …", self.run_all_button):
+            self.interpret()
+        with self._busy(None, "", self.run_all_button):
+            return self.run_assessment()
 
     def show_result(self, assessment_id: str, out=None):
         assessment = self.kct.assessments.find(assessment_id)

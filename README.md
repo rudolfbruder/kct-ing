@@ -44,6 +44,7 @@ says otherwise.
 | 11 | `11_assessment.ipynb` | The assessment: size check, run with progress, verdicts, exceptions, reference problems, the PDF |
 | 12 | `12_import.ipynb` | Import a control from SharePoint: ZIP (kept, sorted per case) or folder; AI picks the control details and the test plan, the rest is evidence |
 | App | `KCT_App.ipynb` (project root) | **The clickable app**: tabs for import, test steps, evidence, assessment, result; no code to type |
+| App | `KCT_App.ipynb` (project root) | **The clickable app**: tabs for import, test steps, evidence, assessment, result; no code to type |
 
 ## The clickable app (Jupyter)
 
@@ -64,6 +65,28 @@ Tabs and buttons of later releases are shown greyed out, marked 'soon'.
 `MODE` in the first cell: `fake` (sample answers after 1-3 seconds), `live` (Gemini from `.env`) or `replay`.
 It is built with `ipywidgets` (`services/presentation/app.py`, class `KctApp`); every button
 calls a plain method (`create_case`, `interpret`, `upload_evidence`, `run_assessment`, `show_result`, `import_zip`),
+so the same steps work from code, and the services do the work as everywhere else.
+
+## The clickable app (Jupyter)
+
+`KCT_App.ipynb` in the project root is the work on one control as an app inside Jupyter: no web
+server, no open port, so it works on the ING machine where no web page can be opened. Run all
+cells and use the tabs; after each step a **Next** button leads to the next tab.
+
+| Tab | What you do |
+|---|---|
+| 1 Case | Pick a case in the **Case** list, choose the control details and the test plan, **Make test steps** (a new run). New control: **+ New case** (just a name), or import its SharePoint folder as a ZIP (select the folder > Download) or a folder path |
+| 2 Test steps | **Make test steps**, then pick a step to see its pass and fail criteria |
+| 3 Evidence | See the evidence, **Add files** + **Upload**, **Show parts for the AI** |
+| 4 Assess | **Run assessment**, with a live progress bar |
+| 5 Result | Verdicts, traceability matrix, exceptions, why it can be trusted, the PDF report |
+| History | Every earlier run: its documents and test steps, the case's evidence, assessments and the result; **Continue with these test steps** uses them again without the AI |
+
+**Run all** (next to the case) does tabs 2 to 5 in one click: test steps, assessment, result.
+
+`MODE` in the first cell: `fake` (sample answers after 1-3 seconds), `live` (Gemini from `.env`) or `replay`.
+It is built with `ipywidgets` (`services/presentation/app.py`, class `KctApp`); every button
+calls a plain method (`create_case`, `interpret`, `upload_evidence`, `run_assessment`, `show_result`, `import_zip`, `run_all`),
 so the same steps work from code, and the services do the work as everywhere else.
 
 ## Ways to run it
@@ -230,6 +253,7 @@ What to install in ING, and what not:
 | `google-genai` | Gemini (`KCT_AI_PROVIDER=gemini`) | Yes, if missing |
 | `pandas` | `06_database.ipynb`, `table()` | Usually there already |
 | `ipywidgets` | `KCT_App.ipynb` (the clickable app) | Usually there with Jupyter; else yes |
+| `ipywidgets` | `KCT_App.ipynb` (the clickable app) | Usually there with Jupyter; else yes |
 | `python-docx`, `reportlab` | `07_evidence_word_to_pdf.ipynb` (.docx to PDF) | Yes, if missing (pure pip, no LibreOffice needed) |
 | `openpyxl` | `08_evidence_excel.ipynb` (Excel to text) | Yes, if missing |
 | `extract-msg` | `09_evidence_email.ipynb` (.msg emails). GPL-3.0 | Yes, if missing; check the license with ING first |
@@ -244,7 +268,7 @@ What to install in ING, and what not:
 
    ```bash
    pip list | grep -i -E "pydantic|google-genai|pandas|fastapi|uvicorn|multipart"
-   pip install --user google-genai pydantic python-docx reportlab openpyxl extract-msg pypdf ipywidgets   # notebooks
+   pip install --user google-genai pydantic python-docx reportlab openpyxl extract-msg pypdf ipywidgets ipywidgets   # notebooks
    pip install --user fastapi uvicorn python-multipart   # only for the API
    ```
 
@@ -1145,6 +1169,7 @@ services/
     matrix.py                   Traceability matrix: test steps x evidence files
   presentation/notebook.py      Visual blocks for notebooks (KPIs, matrix, cards, progress)
   presentation/app.py           KctApp: the clickable app in Jupyter (ipywidgets)
+  presentation/app.py           KctApp: the clickable app in Jupyter (ipywidgets)
   evidences/
     evidence_service.py         EvidenceService: evidence per case, upload, units, converter choice, parts
     units.py                    EvidenceUnit: one uploaded file (an email with its attachments); what counts as evidence
@@ -1173,6 +1198,7 @@ services/
     data.py                     TestStep, CaseInterpretation and other data shapes
 scripts/test_steps.py           Print test steps of a case interpretation
 DEMO.ipynb                      The management demo: 10 steps, presenter notes
+KCT_App.ipynb                   The clickable app in Jupyter
 KCT_App.ipynb                   The clickable app in Jupyter
 OVERVIEW.md                     Two pages for management: what, how, guardrails, status
 demo/                           Demo notes and recorded AI answers for replay

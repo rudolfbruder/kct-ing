@@ -56,8 +56,6 @@ class AppTest(unittest.TestCase):
         self.assertEqual(app.available, ["1 Case", "2 Test steps", "3 Evidence", "4 Assess", "5 Result"])
         self.assertEqual([t for t in app.titles if t.endswith("· soon")], app.titles[len(app.available):-1])
         self.assertEqual(len(app.next_buttons), len(app.available) - 1)   # no "Next" into a tab that is not there
-        soon = [b for b in app.header.children[-1].children if getattr(b, "disabled", False)]
-        self.assertTrue(soon and all("soon" in b.description for b in soon))   # Run all: greyed out
 
     def test_case_from_two_documents_then_test_steps(self) -> None:
         app = KctApp(boot())
@@ -107,6 +105,13 @@ class AppTest(unittest.TestCase):
         roles = [c.role for c in result.sorted_by_ai]
         self.assertEqual((roles.count("control_details"), roles.count("test_plan")), (1, 1))
         self.assertEqual(len(result.evidence), 4)
+
+    def test_run_all_in_one_click(self) -> None:
+        app = KctApp(boot())
+        app.import_zip(ControlFolderFactory(excel_rows=5, pdf_pages=2).zip(), "control.zip", case_name="Run all")
+        assessment = app.run_all()
+        self.assertEqual(assessment.metadata.status, "completed")
+        self.assertEqual(app.tabs.selected_index, 4)
 
     def test_each_upload_is_a_new_run(self) -> None:
         app = KctApp(boot())
