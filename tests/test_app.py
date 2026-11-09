@@ -52,7 +52,7 @@ class AppTest(unittest.TestCase):
         app = KctApp(boot())
         self.assertEqual([t.split(" · ")[0] for t in app.titles],
                          ["1 Case", "2 Test steps", "3 Evidence", "4 Assess", "5 Result", "History"])
-        self.assertEqual(app.available, ["1 Case", "2 Test steps", "3 Evidence"])
+        self.assertEqual(app.available, ["1 Case", "2 Test steps", "3 Evidence", "4 Assess", "5 Result"])
         self.assertEqual([t for t in app.titles if t.endswith("· soon")], app.titles[len(app.available):-1])
         self.assertEqual(len(app.next_buttons), len(app.available) - 1)   # no "Next" into a tab that is not there
         soon = [b for b in app.header.children[-1].children if getattr(b, "disabled", False)]
@@ -77,6 +77,17 @@ class AppTest(unittest.TestCase):
         self.assertIn(Path("notes/extra note.txt"), app.show_evidence())
         self.assertGreaterEqual(len(app.show_parts()), 1)
 
+    def test_assessment_and_result(self) -> None:
+        app = KctApp(boot())
+        new_case(app)
+        app.interpret()
+        app.upload_evidence([("extra note.txt", b"Reviewed on 2026-03-31.")])
+        assessment = app.run_assessment()
+        self.assertEqual(assessment.metadata.status, "completed")
+        self.assertEqual(app.tabs.selected_index, 4)
+        self.assertEqual(app.show_result(assessment.metadata.assessment_id).metadata.assessment_id,
+                         assessment.metadata.assessment_id)
+
     def test_each_upload_is_a_new_run(self) -> None:
         app = KctApp(boot())
         interpreted = new_case(app)
@@ -89,6 +100,7 @@ class AppTest(unittest.TestCase):
         reopened.case_picker.value = interpreted                       # a case picked at the top: clean too
         self.assertIsNone(reopened.step_picker.value)
         self.assertIsNotNone(reopened.show_steps())                    # the saved steps on request ('Show latest')
+        self.assertIsNone(app._safe(app.assess_out, app.run_assessment))   # needs the test steps of this run
 
     def test_a_case_is_a_name_and_each_run_brings_its_documents(self) -> None:
         import uuid
@@ -134,6 +146,9 @@ class AppTest(unittest.TestCase):
         self.assertEqual((app.case, app.interpretation_id), (case, run))
         self.assertEqual(app.tabs.selected_index, 1)
         self.assertEqual(len(app.step_picker.options), len(interpretation.test_steps))
+        assessment = app.run_assessment()
+        self.assertEqual(app.show_history(run).metadata.case_interpretation_id, run)
+        self.assertEqual(assessment.metadata.case_interpretation_id, run)
 
     def test_styled_like_flowbite(self) -> None:
         app = KctApp(boot())

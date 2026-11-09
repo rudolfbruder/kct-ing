@@ -10,6 +10,8 @@ later releases are shown greyed out, marked "soon":
     1 Case         upload the control details and the test plan (PDF) -> a new case
     2 Test steps   run the interpretation, browse the steps and their criteria
     3 Evidence     the case's evidence files, upload more, see the parts the AI gets
+    4 Assess       run the assessment with a live progress bar
+    5 Result       the verdict of every test step, with exceptions, and the PDF
 
 After each step a "Next" button leads to the next tab.
 Every button calls a plain method (create_case, interpret, ...), so the same work can be done
@@ -205,10 +207,27 @@ class KctApp:
             w.HBox([self.evidence_upload, self.evidence_folder, self.upload_button, self.parts_button]),
             self.evidence_out]))
 
+        # 4 Assess
+        self.assess_button = w.Button(description="Run assessment", icon="play")
+        self.assess_button.on_click(lambda _: self._safe(self.assess_out, self.run_assessment))
+        self.assess_out = w.Output()
+        self.runs_out = w.Output()
+        self._style(primary=[self.assess_button])
+        panels.append(("4 Assess", [
+            w.HTML("<div class='kct-hint'>Checks every evidence part against every test step, then decides each "
+                   "step. The result opens when it is done.</div>"),
+            self.assess_button, self.assess_out, w.HTML("<div class='kct-section'>Earlier runs</div>"), self.runs_out]))
+
+        # 5 Result
+        self.run_picker = w.Dropdown(description="Run", layout=w.Layout(width="70%"), style={"description_width": "initial"})
+        self.run_picker.observe(lambda change: self._safe(self.result_out, self.show_result, change["new"])
+                                if change["new"] else None, names="value")
+        self.result_out = w.Output()
+        self._style(self.run_picker)
+        panels.append(("5 Result", [self.run_picker, self.result_out]))
+
         # tabs of later releases: shown greyed out, with what they will do
         soon = []
-        soon.append(("4 Assess", "Check every piece of evidence against every test step, with a live progress bar."))
-        soon.append(("5 Result", "The verdict of every test step, with its exceptions and a read-only PDF report."))
         self.available = [name for name, _ in panels]
 
         # History: earlier runs, to look at (or continue with) without running the AI again
@@ -232,6 +251,7 @@ class KctApp:
             w.HTML("<div class='kct-hint'>The earlier runs (case interpretations) of the case chosen at the top, "
                    "newest first; tick <b>All cases</b> for every case. For each: its documents and test steps"
                    ", the case's evidence"
+                   ", its assessments and results"
                    ". Nothing is sent to the AI here.</div>"),
             w.HBox([self.history_picker, self.history_all, self.history_refresh]), self.use_button, self.history_out,
             self.history_step_picker, self.history_step_out])
@@ -270,7 +290,7 @@ class KctApp:
             self.tabs.set_title(index, f"{TAB_ICONS.get(name.split(' · ')[0], '')} {name}".strip())
 
         config = self._settings()
-        subtitle = "From the control details and the test plan to test steps"
+        subtitle = "From the control documents and their evidence to a verdict per test step"
         self.header = w.VBox([
             w.HTML(STYLE),
             w.HTML(show.banner(title, subtitle).data),
@@ -403,6 +423,42 @@ class KctApp:
             f"<tr><th>Part</th><th>Documents</th><th>Tokens</th></tr>{rows}</table></div>"))
         return parts
 
+    def run_assessment(self):
+        case = self._need_case()
+        if not self.interpretation_id:
+            raise ValueError("No test steps yet: make them in tab 2 first.")
+        self._show(self.result_out, show.loading(f"The result of {case} appears here when the assessment is done …", 6))
+        with self._busy(None, "", self.assess_button):
+            with self.assess_out:
+                self.assess_out.clear_output()
+                progress = show.Progress(f"Assessing {case}")
+                assessment = self.kct.assessments.assess(case, self.interpretation_id, progress=progress)
+        self._list_runs(select=assessment.metadata.assessment_id)
+        self.go(4)
+        return assessment
+
+    def show_result(self, assessment_id: str, out=None):
+        assessment = self.kct.assessments.find(assessment_id)
+        interpretation = self.kct.database.find_interpretation(assessment.metadata.case_interpretation_id)
+        steps = {s.id: s for s in interpretation.test_steps}
+        config = self._settings()
+        effective = sum(v.verdict == "effective" for v in assessment.verdicts)
+        blocks = [show.notice(f"{effective} of {len(assessment.verdicts)} test steps effective, "
+                              f"{len(assessment.verdicts) - effective} not effective", "info")]
+        blocks += [show.verdict_card(v, steps.get(v.test_step_id)) for v in assessment.verdicts]
+        if assessment.metadata.report_path:
+            path = (config.storage_root / assessment.metadata.report_path) if config.files_driver == "local" \
+                else assessment.metadata.report_path
+            blocks.append(show.report_link(str(path), assessment.metadata.report_sha256 or ""))
+        out = out or self.result_out
+        with out:
+            out.clear_output()
+            from IPython.display import display
+
+            for block in blocks:
+                display(block)
+        return assessment
+
     def history(self) -> list:
         """The earlier runs (case interpretations) of the current case, or of all cases; newest first."""
         if not self.history_all.value and not self.case:
@@ -463,6 +519,20 @@ class KctApp:
             display(show._html(f"<div style='{show.CARD}'><b>Evidence of the case now ({len(files)})</b>"
                                + "".join(f"<div>{show._icon(str(p))} {show.escape(str(p))}</div>" for p in files)
                                + "</div>"))
+            runs = [m for m in self.kct.assessments.index(case) if m.case_interpretation_id == interpretation_id]
+            display(show._html(f"<div style='{show.CARD}'><b>Assessments of these test steps ({len(runs)})</b>"
+                               + "".join(f"<div>{show.escape(m.created_at[:19].replace('T', ' '))} · "
+                                         f"<b>{show.escape(m.status)}</b> · {m.parts_done}/{m.parts_total} parts</div>"
+                                         for m in runs)
+                               + ("" if runs else "<div><i>None yet.</i></div>") + "</div>"))
+        done = [m for m in runs if m.status == "completed"]
+        if done:   # the newest result, as in tab 5
+            result = self.w.Output()
+            with self.history_out:
+                from IPython.display import display as show_widget
+
+                show_widget(result)
+            self.show_result(done[0].assessment_id, out=result)
         self._history_steps = {s.id: s for s in interpretation.test_steps}
         self.history_step_picker.options = [(f"{s.reference}: {s.title}", s.id) for s in interpretation.test_steps]
         if interpretation.test_steps:
@@ -475,6 +545,7 @@ class KctApp:
         interpretation = self.kct.database.find_interpretation(interpretation_id)
         self._open_fresh(interpretation.metadata.case_reference)
         self._render_steps(interpretation)
+        self._list_runs()
         self.go(1)
         return interpretation
 
@@ -526,6 +597,7 @@ class KctApp:
         for button in self.next_buttons:
             button.layout.display = "none"
         self.step_picker.options = [("No test steps yet: click Make test steps", None)]
+        self.run_picker.options = [("No assessment yet: run one in tab 4", None)]
         if hasattr(self, "history_all"):
             self.history_out.clear_output()
             self.history_step_out.clear_output()
@@ -541,7 +613,8 @@ class KctApp:
             "info"))
 
     def _outputs(self) -> list:
-        return [self.case_out, self.case_info, self.steps_out, self.step_out, self.evidence_out]
+        return [self.case_out, self.case_info, self.steps_out, self.step_out, self.evidence_out, self.assess_out, self.result_out,
+                self.runs_out]
 
     def _ready(self, index: int) -> None:
         """Step `index` is done: show its "Next" button (the last tab has none)."""
@@ -618,6 +691,20 @@ class KctApp:
     def _step_changed(self, step_id: Optional[str]) -> None:
         if step_id and step_id in getattr(self, "_steps", {}):
             self._show(self.step_out, show.criteria(self._steps[step_id]))
+
+    def _list_runs(self, select: Optional[str] = None) -> None:
+        runs = [m for m in (self.kct.assessments.index(self.case) if self.case else [])
+                if m.case_interpretation_id == self.interpretation_id]
+        self.run_picker.options = [(f"{m.created_at[:19]} · {m.status} · {m.parts_done}/{m.parts_total} parts",
+                                    m.assessment_id) for m in runs]
+        lines = "".join(f"<div>{show.escape(m.created_at[:19])} · <b>{show.escape(m.status)}</b> · "
+                        f"{m.parts_done}/{m.parts_total} parts</div>" for m in runs) or "<i>No runs with these test steps yet.</i>"
+        self._show(self.runs_out, show._html(f"<div style='{show.CARD}'>{lines}</div>"))
+        target = select or (runs[0].assessment_id if runs else None)
+        if target:
+            self.run_picker.value = target
+        if runs:
+            self._ready(3)
 
     def _soon_button(self, description: str, icon: str, what: str):
         """A greyed-out button for something a later release brings."""

@@ -232,5 +232,100 @@ class EvidenceApiTest(unittest.TestCase):
 
 
 
+class AssessmentApiTest(unittest.TestCase):
+    """The assessment through the API with the fake AI. TestClient runs background tasks before returning."""
+
+    def setUp(self) -> None:
+        from factories import DocxFactory, ExcelFactory, MsgFactory
+
+        self.client = TestClient(app)
+        self.case = upload(self.client).json()["metadata"]["case_reference"]
+        self.files = [(DocxFactory.name, DocxFactory().make()), (ExcelFactory.name, ExcelFactory(rows=20).make()),
+                      (MsgFactory.name, MsgFactory(history=1).make())]
+
+    def add_evidence(self) -> None:
+        response = self.client.post(f"/api/v1/cases/{self.case}/evidences",
+                                    files=[("files", (n, d, "application/octet-stream")) for n, d in self.files])
+        self.assertEqual(response.status_code, 200, response.text)
+
+    def start(self):
+        response = self.client.post(f"/api/v1/cases/{self.case}/assessments")
+        self.assertEqual(response.status_code, 202, response.text)
+        self.assertEqual(response.json()["status"], "queued")
+        return response.json()["assessment_id"]
+
+    def test_runs_in_the_background_and_writes_a_read_only_report(self) -> None:
+        self.add_evidence()
+        assessment_id = self.start()
+        body = self.client.get(f"/api/v1/assessments/{assessment_id}").json()
+        meta = body["metadata"]
+        self.assertEqual(meta["status"], "completed", meta["error"])
+        self.assertEqual(meta["parts_total"], 3)
+        self.assertEqual((meta["parts_done"], meta["parts_failed"]), (3, 0))
+        self.assertEqual(len(body["verdicts"]), 17)
+        verdict = next(v for v in body["verdicts"] if v["step_reference"] == "0472-04")
+        self.assertEqual(verdict["verdict"], "not_effective")
+        self.assertEqual(verdict["exceptions"][0]["item"], "SD-105112")
+        self.assertTrue(all(len(p["unit_sha256"]) == 64 for p in body["parts"]))
+
+        pdf = self.client.get(f"/api/v1/assessments/{assessment_id}/report.pdf")
+        self.assertEqual(pdf.status_code, 200)
+        self.assertEqual(pdf.headers["content-type"], "application/pdf")
+        self.assertTrue(pdf.content.startswith(b"%PDF"))
+        self.assertIn(b"/Encrypt", pdf.content)                                   # read-only permissions
+        import hashlib
+        self.assertEqual(hashlib.sha256(pdf.content).hexdigest(), meta["report_sha256"])
+
+        steps = self.client.get(f"/api/v1/cases/{self.case}/test-steps").json()["test_steps"]
+        self.assertEqual({s["status"] for s in steps}, {"effective", "not_effective"})   # statuses follow
+        listed = self.client.get(f"/api/v1/cases/{self.case}/assessments").json()
+        self.assertEqual([a["assessment_id"] for a in listed], [assessment_id])
+
+    def test_a_failing_part_is_recorded_and_the_run_goes_on(self) -> None:
+        from services.assessment.agents.evidence_assessment_agent import EvidenceAssessmentAgent
+
+        self.add_evidence()
+        good = (Path(__file__).parent / "fixtures" / "fake_ai" / "evidence_assessment.json").read_text(encoding="utf-8")
+        EvidenceAssessmentAgent.fake([good, '{"findings": "not a list"}', good])
+        try:
+            assessment_id = self.start()
+        finally:
+            EvidenceAssessmentAgent.stop_faking()
+        body = self.client.get(f"/api/v1/assessments/{assessment_id}").json()
+        self.assertEqual(body["metadata"]["status"], "completed")
+        self.assertEqual((body["metadata"]["parts_done"], body["metadata"]["parts_failed"]), (2, 1))
+        failed = [p for p in body["parts"] if p["status"] == "failed"]
+        self.assertIn("AiInvalidOutputError", failed[0]["error"])
+
+    def test_no_evidence_means_not_effective_without_calling_the_model(self) -> None:
+        assessment_id = self.start()
+        body = self.client.get(f"/api/v1/assessments/{assessment_id}").json()
+        self.assertEqual(body["metadata"]["status"], "completed")
+        self.assertTrue(all(v["verdict"] == "not_effective" and v["no_evidence"] and v["fallback"]
+                            for v in body["verdicts"]))
+
+    def test_missing_verdicts_fall_back_and_history_is_kept(self) -> None:
+        from services.assessment.agents.verdict_agent import VerdictAgent
+
+        self.add_evidence()
+        first = self.start()
+        VerdictAgent.fake(['{"verdicts": [{"step_reference": "0472-01", "verdict": "effective", '
+                           '"no_evidence": false, "reason": "ok"}]}'])
+        try:
+            second = self.start()
+        finally:
+            VerdictAgent.stop_faking()
+        body = self.client.get(f"/api/v1/assessments/{second}").json()
+        fallback = [v for v in body["verdicts"] if v["fallback"]]
+        self.assertEqual(len(fallback), 16)
+        self.assertTrue(all(v["verdict"] == "not_effective" for v in fallback))
+        listed = [a["assessment_id"] for a in self.client.get(f"/api/v1/cases/{self.case}/assessments").json()]
+        self.assertEqual(set(listed), {first, second})
+
+    def test_errors(self) -> None:
+        self.assertEqual(self.client.post("/api/v1/cases/case-999/assessments").status_code, 404)
+        self.assertEqual(self.client.get("/api/v1/assessments/nope").status_code, 404)
+
+
 if __name__ == "__main__":
     unittest.main()

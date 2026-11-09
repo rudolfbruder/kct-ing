@@ -9,6 +9,7 @@ Groups:
 
     database          the SQLite file (KCT_DB_PATH) with all case interpretations and test steps
     cases             uploads/ and outputs/: every stored case and its readable results
+    reports           the assessment PDFs (outputs/<case>/assessment_*.pdf)
     evidence_outputs  what the converters made in the evidences folder: PDFs next to .docx files,
                       .xlsx.md / .msg.md texts, *_images and *_attachments folders, Excel PDF copies
     evidence_samples  the fake evidence files from the factories (*_SAMPLE.*), case folders included
@@ -33,6 +34,7 @@ from services.evidences.units import is_output
 GROUPS: Dict[str, str] = {
     "database": "SQLite database: all case interpretations and test steps",
     "cases": "Stored cases: uploads/ and outputs/",
+    "reports": "Assessment reports: outputs/<case>/assessment_*.pdf",
     "evidence_outputs": "Converted evidence: PDFs from Word, texts and pictures from Excel and emails",
     "evidence_samples": "Fake evidence files from the factories (*_SAMPLE.*) and their outputs",
     "evidence_all": "EVERYTHING in the evidences folder, real evidence included",
@@ -122,6 +124,12 @@ class CleanupService:
                            "GCS bucket is never cleaned from here")]
         return [self._target("cases", self.storage / name) for name in ("uploads", "outputs")
                 if (self.storage / name).exists()]
+
+    def _reports(self) -> List[Target]:
+        if self.config.files_driver == "gcs":
+            return [Target("reports", Path(f"gs://{self.config.gcs_bucket}"), 0, "GCS bucket is never cleaned from here")]
+        outputs = self.storage / "outputs"
+        return [self._target("reports", p) for p in sorted(outputs.glob("*/assessment_*.pdf"))] if outputs.is_dir() else []
 
     def _evidence_outputs(self) -> List[Target]:
         found = []

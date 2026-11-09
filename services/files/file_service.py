@@ -118,10 +118,18 @@ class FileService:
             for name in self.document_names(case_id, kind)
         ]
 
-    def save_output(self, case_id: str, filename: str, content: str) -> str:
+    def save_output(self, case_id: str, filename: str, content) -> str:
+        """Write an output file (text or bytes); returns its path on the disk."""
         path = f"{OUTPUTS}/{case_id}/{filename}"
-        self.disk.put(path, content.encode("utf-8"))
+        self.disk.put(path, content.encode("utf-8") if isinstance(content, str) else bytes(content))
         return path
+
+    def read(self, path: str) -> bytes:
+        """A file by the path save_output returned."""
+        try:
+            return self.disk.get(path)
+        except Exception as exc:
+            raise CaseNotFoundError(f"No file {path}") from exc
 
     def _new_case_id(self) -> str:
         numbers = [

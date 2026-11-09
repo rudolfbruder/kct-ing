@@ -7,6 +7,7 @@ Notebook (kernel in the project folder, or see notebooks/02_hello.ipynb):
     kct.ask.ask("What is 5+2?").answer
     kct.interpretations.create_and_generate(["CD.pdf"], ["TP.pdf"])
     kct.evidences.case("case-001").store([...])
+    kct.assessments.assess("case-001")
     kct.database.interpretations()
 
 routes/api.py uses the same object, so API and notebook run identical code.
@@ -22,6 +23,7 @@ from services.control_testing.summary_service import SummaryService
 from services.control_testing.interpretation_service import InterpretationService
 from services.database import manager as database_manager
 from services.database.contracts import CaseInterpretationRepository
+from services.assessment.assessment_service import AssessmentService
 from services.evidences.docx_converter import DocxConverter
 from services.evidences.evidence_service import EvidenceService
 from services.evidences.evidence_splitter import EvidenceSplitter
@@ -39,6 +41,7 @@ class App:
     interpretations: InterpretationService
     ask: AskService
     evidences: EvidenceService
+    assessments: AssessmentService
     docx_converter: DocxConverter
     excel_converter: ExcelConverter
     msg_converter: MsgConverter
@@ -61,6 +64,7 @@ def boot() -> App:
         interpretations=InterpretationService(files, database),
         ask=AskService(),
         evidences=evidences,
+        assessments=AssessmentService(files, database, evidences),
         docx_converter=docx_converter,
         excel_converter=excel_converter,
         msg_converter=msg_converter,

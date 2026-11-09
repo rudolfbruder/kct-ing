@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Protocol
 
+from services.assessment.data import Assessment, AssessedPart, AssessmentMetadata, StepVerdict
 from services.control_testing.data import (
     CaseInterpretation,
     CaseInterpretationMetadata,
@@ -39,4 +40,30 @@ class CaseInterpretationRepository(Protocol):
 
     def interpretations(self, case_reference: Optional[str] = None) -> List[CaseInterpretationMetadata]:
         """Metadata of every interpretation, newest first, optionally for one case."""
+        ...
+
+
+class AssessmentRepository(Protocol):
+    """Assessment runs, the evidence parts they sent, and the verdicts. Same on every driver."""
+
+    def create_assessment(self, metadata: "AssessmentMetadata") -> None:
+        ...
+
+    def update_assessment(self, assessment_id: str, **fields) -> None:
+        """Change metadata fields (status, parts_done, finished_at, error, report_path, ...)."""
+        ...
+
+    def save_part(self, assessment_id: str, part: "AssessedPart") -> None:
+        ...
+
+    def save_verdicts(self, assessment_id: str, verdicts: List["StepVerdict"]) -> None:
+        """Store the verdicts and set each test step's status to its verdict."""
+        ...
+
+    def find_assessment(self, assessment_id: str) -> "Assessment":
+        """Raises RecordNotFoundError when there is no such assessment."""
+        ...
+
+    def assessments(self, case_reference: Optional[str] = None) -> List["AssessmentMetadata"]:
+        """Metadata of every assessment, newest first, optionally for one case."""
         ...

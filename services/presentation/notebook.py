@@ -16,8 +16,8 @@ from typing import Iterable, List, Optional
 GREEN, GREEN_BG = "#166534", "#DCFCE7"
 RED, RED_BG = "#991B1B", "#FEE2E2"
 AMBER, AMBER_BG = "#92400E", "#FEF3C7"
-BLUE, BLUE_BG = "#000066", "#E6E6F5"
-ORANGE, ORANGE_BG = "#FF6200", "#FFF1E6"
+BLUE, BLUE_BG = "#000066", "#E6E6F5"       # ING navy
+ORANGE, ORANGE_BG = "#FF6200", "#FFF1E6"   # ING orange
 GREY, GREY_BG = "#4B5563", "#F3F4F6"
 INK = "#111827"
 CARD = f"background:#FFFFFF;color:{INK};border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;" \
@@ -100,7 +100,27 @@ def _badge(text: str, color: str, background: str) -> str:
             f"font-size:11px;font-weight:600;white-space:nowrap'>{escape(text)}</span>")
 
 
+def _verdict_badge(verdict: str, no_evidence: bool = False) -> str:
+    if verdict == "effective":
+        return _badge("EFFECTIVE", GREEN, GREEN_BG)
+    return _badge("NO EVIDENCE", AMBER, AMBER_BG) if no_evidence else _badge("NOT EFFECTIVE", RED, RED_BG)
+
+
 # --- headings and status -------------------------------------------------------------------
+
+def _logo_html(height: int = 34) -> str:
+    """The brand's logo as an inline image, or its name as a wordmark when the file is not there."""
+    import base64
+
+    from services.branding import brand
+
+    b = brand()
+    if b.logo:
+        data = base64.b64encode(b.logo.read_bytes()).decode("ascii")
+        kind = "svg+xml" if b.logo.suffix.lower() == ".svg" else b.logo.suffix.lower().lstrip(".") or "png"
+        return f"<img src='data:image/{kind};base64,{data}' style='height:{height}px' alt='{escape(b.name)}'>"
+    return f"<span style='font-size:{height - 6}px;font-weight:800;color:{ORANGE}'>{escape(b.name)}</span>"
+
 
 def banner(title: str, subtitle: str = ""):
     return _html(
@@ -109,7 +129,7 @@ def banner(title: str, subtitle: str = ""):
         f"align-items:center;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif'>"
         f"<div><div style='font-size:24px;font-weight:700;color:{BLUE}'>{escape(title)}</div>"
         f"<div style='font-size:14px;color:{GREY};margin-top:4px'>{escape(subtitle)}</div></div>"
-        f"</div>")
+        f"<div>{_logo_html()}</div></div>")
 
 
 def mode(provider: str, model: str, replay: str = ""):
@@ -175,3 +195,70 @@ def criteria(step):
         f"<div style='color:{RED};font-weight:600;margin-top:10px'>Fails if any is true</div>{refuse}</div>")
 
 
+# --- progress -------------------------------------------------------------------------------
+
+class Progress:
+    """A progress bar that follows the assessment's progress messages ("[3/6] ...")."""
+
+    def __init__(self, title: str = "Assessment") -> None:
+        from IPython.display import display
+
+        self.title = title
+        self.done, self.total, self.last = 0, 0, "starting …"
+        self.lines: List[str] = []
+        self.handle = display(self._render(), display_id=True)
+
+    def __call__(self, message: str) -> None:
+        match = re.match(r"\[(\d+)/(\d+)\]", message.strip())
+        if match:
+            self.done, self.total = int(match.group(1)) - 1, int(match.group(2))
+        if message.strip().startswith(("✅", "❌")) and self.total:
+            self.done = min(self.total, self.done + 1) if "relevant step" in message or "❌" in message else self.done
+        self.last = message.strip()
+        self.lines.append(message.rstrip())
+        if self.handle is None:   # not in a live notebook (script, test): plain lines instead
+            print(message)
+        else:
+            self.handle.update(self._render())
+
+    def _render(self):
+        share = 100 * self.done / self.total if self.total else 0
+        log = escape("\n".join(self.lines[-8:]))
+        return _html(
+            f"<div style='{CARD}'><div style='font-weight:700'>"
+            + ("" if self.total and self.done >= self.total else "<span class='kct-spinner'></span> ")
+            + f"{escape(self.title)}</div>"
+            f"<div style='background:{GREY_BG};border-radius:6px;height:12px;margin:8px 0'>"
+            f"<div style='background:{ORANGE};width:{share:.0f}%;height:12px;border-radius:6px'></div></div>"
+            f"<div style='color:{GREY}'>{self.done} of {self.total or '?'} evidence parts</div>"
+            f"<pre style='font-size:11px;color:{INK};background:{GREY_BG};padding:8px;border-radius:6px;"
+            f"white-space:pre-wrap;margin-top:8px'>{log}</pre></div>")
+
+
+# --- results --------------------------------------------------------------------------------
+
+def verdict_card(verdict, step=None):
+    exceptions = "".join(
+        f"<div style='background:{RED_BG};border-radius:8px;padding:8px 10px;margin:6px 0'>"
+        f"<b>{escape(e.item)}</b>: {escape(e.description)}"
+        + (f"<div style='color:{GREY};font-size:12px;margin-top:3px'>📍 {escape(e.reference.document)}"
+           f"{', ' + escape(e.reference.location) if e.reference.location else ''}</div>" if e.reference else "")
+        + "</div>" for e in verdict.exceptions)
+    refs = "".join(f"<div style='color:{GREY};font-size:12px'>📍 {escape(r.document)}"
+                   f"{', ' + escape(r.location) if r.location else ''}</div>" for r in verdict.references
+                   if not verdict.exceptions)
+    problems = "".join(f"<div style='color:{RED};font-size:12px'>⚠ {escape(p)}</div>"
+                       for p in verdict.reference_problems)
+    description = f"<div style='color:{GREY};margin:4px 0'>{escape(step.description)}</div>" if step else ""
+    return _html(
+        f"<div style='{CARD}'><div style='display:flex;justify-content:space-between;align-items:center'>"
+        f"<div style='font-size:15px;font-weight:700'>{escape(verdict.step_reference)}: {escape(verdict.title)}</div>"
+        f"{_verdict_badge(verdict.verdict, verdict.no_evidence)}</div>{description}"
+        f"<div style='margin:8px 0'>{escape(verdict.reason)}</div>{exceptions}{refs}{problems}</div>")
+
+
+def report_link(path: str, sha256: str = ""):
+    return _html(f"<div style='{CARD}'>📕 <b>Read-only PDF report</b><div style='font-family:Menlo,Consolas,monospace;"
+                 f"font-size:12px;margin-top:4px'>{escape(path)}</div>"
+                 + (f"<div style='color:{GREY};font-size:11px'>SHA-256 {escape(sha256)}</div>" if sha256 else "")
+                 + "</div>")

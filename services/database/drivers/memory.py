@@ -19,10 +19,11 @@ from services.control_testing.data import (
     TestStep,
     TestStepDraft,
 )
+from services.database.drivers.memory_assessments import MemoryAssessments
 from services.database.exceptions import RecordNotFoundError
 
 
-class MemoryRepository:
+class MemoryRepository(MemoryAssessments):
     def __init__(self) -> None:
         self._cases: Dict[str, str] = {}  # case reference -> case UUID
         self._interpretations: List[CaseInterpretation] = []  # oldest first

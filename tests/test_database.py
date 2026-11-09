@@ -120,5 +120,53 @@ class MemoryRepositoryTest(unittest.TestCase):
 
 
 
+class AssessmentStorageTest(unittest.TestCase):
+    """The same assessment round trip on the memory and SQLite drivers."""
+
+    def drivers(self):
+        from services.database.drivers.memory import MemoryRepository
+
+        yield MemoryRepository()
+        yield SqliteRepository(Path(tempfile.mkdtemp(prefix="kct-db-")) / "test.sqlite")
+
+    def test_round_trip_and_step_status(self) -> None:
+        from services.assessment.data import AssessedPart, AssessmentMetadata, CheckedStepFinding, StepVerdict
+
+        for db in self.drivers():
+            with self.subTest(driver=type(db).__name__):
+                interpretation = db.create_interpretation("case-001", "fake", "fake", SUMMARIES, [draft("A"), draft("B")])
+                step_a, step_b = interpretation.test_steps
+                meta = AssessmentMetadata(
+                    assessment_id=str(uuid.uuid4()), case_id=interpretation.metadata.case_id,
+                    case_reference="case-001", case_interpretation_id=interpretation.metadata.case_interpretation_id,
+                    status="queued", provider="fake", model="fake", created_at="2026-11-07T00:00:00+00:00")
+                db.create_assessment(meta)
+                db.update_assessment(meta.assessment_id, status="running", parts_total=1)
+                db.save_part(meta.assessment_id, AssessedPart(
+                    id="p-1", position=1, unit="EV-01.pdf", unit_sha256="abc", part_number=1, part_total=1,
+                    label="EV-01.pdf", documents=["EV-01.pdf"], estimated_tokens=10, status="assessed",
+                    findings=[CheckedStepFinding(step_reference="A", relevance="supports", reference_problems=["x"])]))
+                db.save_verdicts(meta.assessment_id, [
+                    StepVerdict(id="v-1", test_step_id=step_a.id, step_reference="A", title="T", verdict="effective",
+                                no_evidence=False, reason="ok"),
+                    StepVerdict(id="v-2", test_step_id=step_b.id, step_reference="B", title="T",
+                                verdict="not_effective", no_evidence=True, reason="none"),
+                ])
+                db.update_assessment(meta.assessment_id, status="completed")
+
+                found = db.find_assessment(meta.assessment_id)
+                self.assertEqual(found.metadata.status, "completed")
+                self.assertEqual(found.metadata.parts_total, 1)
+                self.assertEqual(found.parts[0].findings[0].reference_problems, ["x"])
+                self.assertEqual([v.verdict for v in found.verdicts], ["effective", "not_effective"])
+                self.assertEqual([m.assessment_id for m in db.assessments("case-001")], [meta.assessment_id])
+                self.assertEqual(db.assessments("case-404"), [])
+                statuses = {s.reference: s.status for s in db.find_interpretation(
+                    interpretation.metadata.case_interpretation_id).test_steps}
+                self.assertEqual(statuses, {"A": "effective", "B": "not_effective"})
+                with self.assertRaises(RecordNotFoundError):
+                    db.find_assessment("nope")
+
+
 if __name__ == "__main__":
     unittest.main()

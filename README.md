@@ -1,7 +1,7 @@
 # KCT
 
 Key Control Testing helper. Takes a process's control details and test plan
-(PDF), turns them into test steps, and prepares the evidence for checking them,
+(PDF), turns them into test steps, and judges evidence against those steps,
 using Gemini or Claude.
 
 The process, in the words used everywhere in this project (code, logs, docs):
@@ -11,8 +11,11 @@ The process, in the words used everywhere in this project (code, logs, docs):
 | **Case** | Upload the control details and test plan PDFs; stored as `case-NNN` | done |
 | **Interpretation** | Summarize both documents and turn them into test steps with acceptance and refusal criteria (JSON) | done |
 | **Evidence** | Upload evidence files per case (Word, Excel, Outlook emails, PDF, images), convert them for the AI and split big ones into parts | done |
+| **Assessment** | Judge each test step effective / not effective against the evidence: one AI call per evidence part, then one call that combines | done (fake AI); real Gemini run pending |
+| **Report** | Read-only PDF with the verdicts, exceptions, evidence references and evidence SHA-256 | done |
 
-(Earlier versions called the interpretation "Stage 1 + 2".)
+(Earlier versions called the interpretation "Stage 1 + 2" and the assessment
+"Stage 3".)
 
 ## Demo: the notebooks in order
 
@@ -34,7 +37,8 @@ says otherwise.
 | 08 | `08_evidence_excel.ipynb` | Excel evidence to text with Excel coordinates, colors and comments, plus pictures |
 | 09 | `09_evidence_email.ipynb` | Outlook emails (.msg) to text; their Word, Excel and email attachments converted too |
 | 10 | `10_evidence_case.ipynb` | Evidence of one case: upload, convert, split into the parts the assessment will send (calls and tokens) |
-| App | `KCT_App.ipynb` (project root) | **The clickable app**: tabs for case, test steps, evidence; no code to type |
+| 11 | `11_assessment.ipynb` | The assessment: size check, run with progress, verdicts, exceptions, reference problems, the PDF |
+| App | `KCT_App.ipynb` (project root) | **The clickable app**: tabs for case, test steps, evidence, assessment, result; no code to type |
 
 ## The clickable app (Jupyter)
 
@@ -48,11 +52,13 @@ Tabs and buttons of later releases are shown greyed out, marked 'soon'.
 | 1 Case | Pick a case in the **Case** list, choose the control details and the test plan (PDF), **Make test steps** (a new run). New control: **+ New case**, just a name |
 | 2 Test steps | **Make test steps**, then pick a step to see its pass and fail criteria |
 | 3 Evidence | See the evidence, **Add files** + **Upload**, **Show parts for the AI** |
-| History | Every earlier run: its documents and test steps, the case's evidence; **Continue with these test steps** uses them again without the AI |
+| 4 Assess | **Run assessment**, with a live progress bar |
+| 5 Result | The verdict of every test step, with its exceptions, and the PDF report |
+| History | Every earlier run: its documents and test steps, the case's evidence, assessments and the result; **Continue with these test steps** uses them again without the AI |
 
 `MODE` in the first cell: `fake` (sample answers after 1-3 seconds) or `live` (Gemini from `.env`).
 It is built with `ipywidgets` (`services/presentation/app.py`, class `KctApp`); every button
-calls a plain method (`create_case`, `interpret`, `upload_evidence`),
+calls a plain method (`create_case`, `interpret`, `upload_evidence`, `run_assessment`, `show_result`),
 so the same steps work from code, and the services do the work as everywhere else.
 
 ## Ways to run it
@@ -382,6 +388,8 @@ too low fails the same way.
 | `KCT_BQ_DATASET` | | BigQuery dataset: `dataset` (in `KCT_PROJECT_ID`) or `project.dataset` |
 | `KCT_BQ_LOCATION` | | Dataset location, e.g. `EU` or `europe-west4`. Empty = BigQuery decides |
 | `KCT_EVIDENCES_ROOT` | `<storage>/evidences` | Evidence documents (assessment). Any folder layout below it |
+| `KCT_ASSESSMENT_MAX_TOKENS` | `32768` | Output limit per evidence part (assessment) |
+| `KCT_VERDICT_MAX_TOKENS` | `32768` | Output limit of the final verdict call |
 | `KCT_PDF_MAX_PAGES` | `50` | Evidence PDFs with more pages are split into parts |
 | `KCT_PDF_MAX_MB` | `20` | Evidence PDFs (or parts) bigger than this are split further |
 | `KCT_PDF_OVERLAP_PAGES` | `2` | Pages repeated at each cut, so nothing is lost at a page break |
@@ -444,6 +452,9 @@ Notebooks in `notebooks/`:
   email as text (header, body with lists, red text and inline images) and its
   attachments through the Word, Excel and email converters. Can create a fake
   evidence email first. See "Email evidence".
+- `11_assessment.ipynb`: runs the assessment of a case with progress per
+  evidence part, then shows the verdicts, exceptions, reference problems and
+  the read-only PDF. See "Assessment".
 - `10_evidence_case.ipynb`: puts evidence into a case's folder and shows
   how it is converted and split into parts, one per future AI call, with
   token estimates. See "Evidence of a case".
@@ -895,6 +906,85 @@ MsgFactory(history=6, images=3).create(folder)   # a longer thread
 `python scripts/make_sample_evidence.py` writes all three into the evidences
 folder.
 
+## Assessment
+
+Judges a case's evidence against its test steps. Logic: `AssessmentService`
+(`services/assessment/assessment_service.py`).
+
+```
+case's newest interpretation ── test steps (with acceptance and refusal criteria)
+case's evidence ── units ── parts                                  (see "Evidence of a case")
+LOOP over parts:   EvidenceAssessmentAgent (prompts/evidence_assessment.md)
+                   gets: control details + test plan PDFs, all test steps, this part
+                   answers per step: supports | contradicts | partly | not_relevant,
+                   each criterion met | not_met | not_shown with a reference,
+                   failing items (exceptions) with references
+                   → references checked against the evidence sent (ReferenceChecker)
+                   → saved at once (progress); a failing part is recorded, the loop goes on
+COMBINE:           VerdictAgent (prompts/evidence_verdict.md), all findings as text
+                   answers per step: effective | not_effective, no_evidence, reason,
+                   exceptions, references
+SAVE:              verdicts in the database, each test step's status = its verdict
+REPORT:            read-only PDF in outputs/<case>/assessment_<id>.pdf, SHA-256 stored
+```
+
+Rules (in the verdict prompt): any refusal criterion met, acceptance criterion
+not met, or failing item → **not effective**; effective only when the findings
+together show every acceptance criterion met. No relevant evidence at all →
+not effective with **no evidence** flagged. A step the model leaves out gets
+not effective, flagged **fallback**. No evidence uploaded → every step not
+effective (no evidence) without calling the model. Test steps are named by
+their reference (`0472-04`) towards the model, not by UUID.
+
+**API** (runs in the background):
+
+| Method and path | Does |
+|---|---|
+| `POST /cases/{case_id}/assessments` | Starts a run; returns at once (202) with its ID and `status: queued`. Optional body `{"case_interpretation_id": "..."}`; default is the newest interpretation |
+| `GET /assessments/{id}` | Progress while running (`parts_done` of `parts_total`); verdicts, findings per part and evidence hashes when `completed`; the error when `failed` |
+| `GET /cases/{case_id}/assessments` | Every run of the case, newest first. Runs are kept |
+| `GET /assessments/{id}/report.pdf` | The PDF of a completed run |
+
+```bash
+curl -X POST http://localhost:8000/api/v1/cases/case-002/assessments
+curl http://localhost:8000/api/v1/assessments/<id>
+curl -o report.pdf http://localhost:8000/api/v1/assessments/<id>/report.pdf
+```
+
+From Python: `kct.assessments.assess("case-002", progress=print)` runs and
+waits; `start()` + `run()` are what the API does.
+
+**Report.** Header (case, run, interpretation, model, dates, parts), summary
+table, then per test step its criteria, verdict, reason, exceptions and
+evidence references; the evidence files with their SHA-256; an appendix with
+the findings per part and every reference problem. The PDF has the "no
+changes, no annotations" permission (printing and copying stay allowed). That
+stops normal viewers from editing it but is not tamper-proof; compare the
+file's SHA-256 with `report_sha256` to prove a copy is unchanged.
+
+**Database.** Three more tables on every driver: `assessments` (one run, with
+status and progress), `assessment_parts` (one evidence part: unit, SHA-256,
+tokens, status, findings as JSON), `step_verdicts` (one per test step, details
+as JSON).
+
+**Known limits.**
+- A run that is interrupted (the API restarts) stays `running`; start a new one.
+- The control details and test plan PDFs go with every evidence call. Gemini
+  context caching would make repeated calls cheaper; not built yet.
+- Fake mode returns the same findings for every part, so reference problems
+  show up for parts that do not contain the cited document. That is the
+  checker working, not a bug.
+- The prompts are tested with the fake AI only. The first real Gemini runs
+  will need prompt tuning.
+
+## Branding
+
+The PDF report (and, from the demo release on, the dashboard) uses ING's colours, orange
+`#FF6200` and navy `#000066` (`services/branding.py`), and shows the ING logo on every page when
+the file is there. The logo is a trademark and this repository is public, so it is never
+committed: put the official file from ING's brand portal at `branding/logo.png` or set
+`KCT_BRAND_LOGO` (see `branding/README.md`). Without it, "ING" appears as a wordmark in orange.
+
 ## Cleaning up
 
 `notebooks/00_cleanup.ipynb` (or `CleanupService` in
@@ -907,6 +997,7 @@ leave behind. Choose groups, look at the list, then confirm:
 | `evidence_outputs` | What the converters made: PDFs next to `.docx`, `.xlsx.md`, `.msg.md`, `*_images`, `*_attachments` | on |
 | `evidence_samples` | The fake files from the factories (`*_SAMPLE.*`) | on |
 | `demo_files` | `storage/demo/`, `sqlite_test.sqlite`, `api_from_notebook.log` | on |
+| `reports` | Assessment PDFs: `outputs/<case>/assessment_*.pdf` | on |
 | `cases` | `uploads/` and `outputs/`: every stored case, real uploaded PDFs included | off |
 | `logs` | `storage/logs/` | off |
 | `evidence_all` | Everything in the evidences folder, real evidence included | off |
@@ -964,6 +1055,7 @@ controllers/
   test_steps_controller.py      Interpretation over HTTP (InterpretationService does the work)
   ask_controller.py             POST /ask smoke test
   evidences_controller.py       Evidence of a case: upload, list, parts
+  assessments_controller.py     Assessment: start (background), progress, results, report.pdf
   case_interpretations_controller.py  Read stored case interpretations
   summary_controller.py         One summary (part of the interpretation)
   cases_controller.py           Health, case listings
@@ -975,6 +1067,12 @@ services/
   config.py                     All settings, read from env
   playground/ask_service.py     AskService: one question to the provider (smoke test)
   maintenance/cleanup_service.py  CleanupService: deletes demo and test leftovers, plan first
+  assessment/
+    assessment_service.py       AssessmentService: loop over evidence parts, combine, save, report
+    agents/                     EvidenceAssessmentAgent (per part), VerdictAgent (combine)
+    data.py                     Answers (EvidenceFindings, VerdictList) and stored data (Assessment, ...)
+    references.py               ReferenceChecker: cited document/page/row must exist in what was sent
+    report.py                   AssessmentReport: the read-only PDF
   evidences/
     evidence_service.py         EvidenceService: evidence per case, upload, units, converter choice, parts
     units.py                    EvidenceUnit: one uploaded file (an email with its attachments); what counts as evidence
@@ -1017,7 +1115,8 @@ notebooks/                      Demo notebooks, run them in order:
   08_evidence_excel.ipynb       Evidence Excel to text + images for the AI
   09_evidence_email.ipynb       Outlook emails to text, attachments converted
   10_evidence_case.ipynb        Evidence of a case: upload, convert, split into parts
-prompts/<agent name>.md         Each agent's instructions
+  11_assessment.ipynb           The assessment: run, verdicts, exceptions, read-only PDF
+prompts/<agent name>.md         Each agent's instructions (evidence_assessment.md, evidence_verdict.md for the assessment)
 tests/fixtures/fake_ai/         Fake mode answers, one per agent
 kct.sh                          All setup and run commands without Docker
 Dockerfile, docker-compose.yml  API and JupyterLab containers

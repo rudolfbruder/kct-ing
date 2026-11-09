@@ -27,6 +27,7 @@ from services.control_testing.data import (
     TestStep,
     TestStepDraft,
 )
+from services.database.drivers.sqlite_assessments import SqliteAssessments
 from services.database.exceptions import RecordNotFoundError
 
 SCHEMA = """
@@ -77,12 +78,13 @@ JOIN cases c ON c.id = ci.case_id
 """
 
 
-class SqliteRepository:
+class SqliteRepository(SqliteAssessments):
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as con:
             con.executescript(SCHEMA)
+            self._create_assessment_tables(con)
 
     def create_interpretation(
         self,
