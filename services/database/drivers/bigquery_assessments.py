@@ -29,9 +29,21 @@ CREATE TABLE IF NOT EXISTS `{ds}.assessments` (
     finished_at             STRING,
     error                   STRING,
     report_path             STRING,
-    report_sha256           STRING
+    report_sha256           STRING,
+    evidence_files          INT64,
+    duration_seconds        FLOAT64,
+    input_tokens            INT64,
+    output_tokens           INT64,
+    estimated_cost          FLOAT64
 )
 CLUSTER BY case_reference;
+
+-- Columns added later, for tables made by an older version.
+ALTER TABLE `{ds}.assessments` ADD COLUMN IF NOT EXISTS evidence_files INT64;
+ALTER TABLE `{ds}.assessments` ADD COLUMN IF NOT EXISTS duration_seconds FLOAT64;
+ALTER TABLE `{ds}.assessments` ADD COLUMN IF NOT EXISTS input_tokens INT64;
+ALTER TABLE `{ds}.assessments` ADD COLUMN IF NOT EXISTS output_tokens INT64;
+ALTER TABLE `{ds}.assessments` ADD COLUMN IF NOT EXISTS estimated_cost FLOAT64;
 
 CREATE TABLE IF NOT EXISTS `{ds}.assessment_parts` (
     id             STRING NOT NULL,
@@ -56,7 +68,9 @@ CREATE TABLE IF NOT EXISTS `{ds}.step_verdicts` (
 CLUSTER BY assessment_id;
 """
 
-TYPES = {"parts_total": "INT64", "parts_done": "INT64", "parts_failed": "INT64"}
+TYPES = {"parts_total": "INT64", "parts_done": "INT64", "parts_failed": "INT64", "evidence_files": "INT64",
+         "input_tokens": "INT64", "output_tokens": "INT64", "duration_seconds": "FLOAT64",
+         "estimated_cost": "FLOAT64"}
 COLUMNS = list(AssessmentMetadata.model_fields)
 
 
@@ -139,4 +153,7 @@ COMMIT TRANSACTION;
 
 
 def _metadata(row) -> AssessmentMetadata:
-    return AssessmentMetadata(**{name: row["id" if name == "assessment_id" else name] for name in COLUMNS})
+    values = {name: row["id" if name == "assessment_id" else name] for name in COLUMNS}
+    for name in ("evidence_files", "input_tokens", "output_tokens"):
+        values[name] = values[name] or 0     # NULL in rows written before the column existed
+    return AssessmentMetadata(**values)

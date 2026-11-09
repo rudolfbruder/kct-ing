@@ -17,6 +17,10 @@ The process, in the words used everywhere in this project (code, logs, docs):
 (Earlier versions called the interpretation "Stage 1 + 2" and the assessment
 "Stage 3".)
 
+> **For management and demos:** start with [`OVERVIEW.md`](OVERVIEW.md) (what it is, how it
+> works, guardrails, status) and [`DEMO.ipynb`](DEMO.ipynb) (the whole story in 10 steps, with
+> presenter notes; see [`demo/README.md`](demo/README.md) for the replay of real AI answers).
+
 ## Demo: the notebooks in order
 
 Open the notebooks in `notebooks/` and run them by number (Run All in each).
@@ -54,10 +58,10 @@ Tabs and buttons of later releases are shown greyed out, marked 'soon'.
 | 2 Test steps | **Make test steps**, then pick a step to see its pass and fail criteria |
 | 3 Evidence | See the evidence, **Add files** + **Upload**, **Show parts for the AI** |
 | 4 Assess | **Run assessment**, with a live progress bar |
-| 5 Result | The verdict of every test step, with its exceptions, and the PDF report |
+| 5 Result | Verdicts, traceability matrix, exceptions, why it can be trusted, the PDF report |
 | History | Every earlier run: its documents and test steps, the case's evidence, assessments and the result; **Continue with these test steps** uses them again without the AI |
 
-`MODE` in the first cell: `fake` (sample answers after 1-3 seconds) or `live` (Gemini from `.env`).
+`MODE` in the first cell: `fake` (sample answers after 1-3 seconds), `live` (Gemini from `.env`) or `replay`.
 It is built with `ipywidgets` (`services/presentation/app.py`, class `KctApp`); every button
 calls a plain method (`create_case`, `interpret`, `upload_evidence`, `run_assessment`, `show_result`, `import_zip`),
 so the same steps work from code, and the services do the work as everywhere else.
@@ -347,6 +351,7 @@ Set `KCT_AI_PROVIDER`; every agent then runs on that provider. Nothing else chan
 | `gemini` (default) | Gemini on Vertex AI | `KCT_PROJECT_ID`, `google-genai` |
 | `anthropic` | Claude on Vertex AI (`KCT_ANTHROPIC_PLATFORM=vertex`) or the Anthropic API (`api`) | `KCT_PROJECT_ID` or `ANTHROPIC_API_KEY`, `anthropic[vertex]` |
 | `fake` | Fixture files in `tests/fixtures/fake_ai/` | nothing |
+| `replay` | Real answers recorded earlier with `KCT_AI_RECORD=<name>`, from `demo/recordings/<name>/` (`KCT_AI_REPLAY`) | a recording |
 
 With `fake`, `KCT_FAKE_DELAY=1-3` waits a random 1 to 3 seconds per answer, so the app's
 loaders show as with a real model (the app's fake mode sets it; empty = no wait).
@@ -394,6 +399,9 @@ too low fails the same way.
 | `KCT_IMPORT_ROOT` | | Folder the API may import control folders from (`POST /cases/import`); empty = off |
 | `KCT_ZIP_MAX_MB` | `2048` | Largest unpacked size of an uploaded ZIP |
 | `KCT_ZIP_MAX_FILES` | `5000` | Most files in an uploaded ZIP |
+| `KCT_PRICE_INPUT_PER_MTOK`, `KCT_PRICE_OUTPUT_PER_MTOK`, `KCT_PRICE_CURRENCY` | `0`, `0`, `USD` | Prices per million tokens, to show each assessment's cost; take them from the Vertex AI pricing page |
+| `KCT_AI_RECORD` | | Save every real answer under `demo/recordings/<name>/` |
+| `KCT_AI_REPLAY` | `demo` | Recording used by `KCT_AI_PROVIDER=replay` |
 | `KCT_PDF_MAX_PAGES` | `50` | Evidence PDFs with more pages are split into parts |
 | `KCT_PDF_MAX_MB` | `20` | Evidence PDFs (or parts) bigger than this are split further |
 | `KCT_PDF_OVERLAP_PAGES` | `2` | Pages repeated at each cut, so nothing is lost at a page break |
@@ -1010,7 +1018,9 @@ curl -o report.pdf http://localhost:8000/api/v1/assessments/<id>/report.pdf
 From Python: `kct.assessments.assess("case-002", progress=print)` runs and
 waits; `start()` + `run()` are what the API does.
 
-**Report.** Header (case, run, interpretation, model, dates, parts), summary
+**Report.** Page 1 is an executive summary: verdict counts, run figures (time, tokens, cost), the
+traceability matrix (test steps x evidence files: supports, contradicts, partly) and the key
+exceptions. Then the header (case, run, interpretation, model, dates, parts), summary
 table, then per test step its criteria, verdict, reason, exceptions and
 evidence references; the evidence files with their SHA-256; an appendix with
 the findings per part and every reference problem. The PDF has the "no
@@ -1119,8 +1129,6 @@ controllers/
   cases_controller.py           Health, case listings
 bootstrap/logging.py            app.log and agents.log
 services/
-  presentation/notebook.py      Visual blocks for notebooks and the app (cards, test steps)
-  presentation/app.py           KctApp: the clickable app in Jupyter (ipywidgets)
   app.py                        boot(): builds every service; used by routes/api.py and notebooks
   config.py                     All settings, read from env
   playground/ask_service.py     AskService: one question to the provider (smoke test)
@@ -1133,7 +1141,10 @@ services/
     agents/                     EvidenceAssessmentAgent (per part), VerdictAgent (combine)
     data.py                     Answers (EvidenceFindings, VerdictList) and stored data (Assessment, ...)
     references.py               ReferenceChecker: cited document/page/row must exist in what was sent
-    report.py                   AssessmentReport: the read-only PDF
+    report.py                   AssessmentReport: the read-only PDF (page 1: executive summary)
+    matrix.py                   Traceability matrix: test steps x evidence files
+  presentation/notebook.py      Visual blocks for notebooks (KPIs, matrix, cards, progress)
+  presentation/app.py           KctApp: the clickable app in Jupyter (ipywidgets)
   evidences/
     evidence_service.py         EvidenceService: evidence per case, upload, units, converter choice, parts
     units.py                    EvidenceUnit: one uploaded file (an email with its attachments); what counts as evidence
@@ -1161,7 +1172,10 @@ services/
     agents/                     One file per agent, e.g. test_steps_agent.py
     data.py                     TestStep, CaseInterpretation and other data shapes
 scripts/test_steps.py           Print test steps of a case interpretation
+DEMO.ipynb                      The management demo: 10 steps, presenter notes
 KCT_App.ipynb                   The clickable app in Jupyter
+OVERVIEW.md                     Two pages for management: what, how, guardrails, status
+demo/                           Demo notes and recorded AI answers for replay
 factories/                      DocxFactory, ExcelFactory, MsgFactory, PdfFactory, ControlFolderFactory: fake evidence and control folders
 scripts/make_sample_evidence.py Write the fake evidence files with the factories
 notebooks/                      Demo notebooks, run them in order:

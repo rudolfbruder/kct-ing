@@ -6,11 +6,14 @@ Colors are set inline on white cards, so they read the same in light and dark th
     from services.presentation import notebook as show
     show.banner("Key Control Testing", "From the control documents to test steps")
     show.test_steps(interpretation)
+    show.kpis(assessment)
+    show.matrix(assessment)
 """
 from __future__ import annotations
 
 import re
 from html import escape
+from pathlib import Path
 from typing import Iterable, List, Optional
 
 GREEN, GREEN_BG = "#166534", "#DCFCE7"
@@ -132,8 +135,19 @@ def banner(title: str, subtitle: str = ""):
         f"<div>{_logo_html()}</div></div>")
 
 
+def step(number: int, title: str, text: str = ""):
+    return _html(
+        f"<div style='font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:6px 0'>"
+        f"<span style='display:inline-block;background:{ORANGE};color:#FFF;border-radius:999px;width:26px;"
+        f"height:26px;text-align:center;line-height:26px;font-weight:700;margin-right:8px'>{number}</span>"
+        f"<span style='font-size:17px;font-weight:700;color:{BLUE}'>{escape(title)}</span>"
+        f"<div style='color:{GREY};margin:4px 0 0 34px'>{escape(text)}</div></div>")
+
+
 def mode(provider: str, model: str, replay: str = ""):
-    if provider == "fake":
+    if provider == "replay":
+        text, color, bg = f"REPLAY of recorded real AI answers ({replay})", BLUE, BLUE_BG
+    elif provider == "fake":
         text, color, bg = "FAKE AI: fixed sample answers, no AI called", AMBER, AMBER_BG
     else:
         text, color, bg = f"LIVE AI: {provider} / {model}", GREEN, GREEN_BG
@@ -156,6 +170,25 @@ def loading(text: str, rows: int = 4):
                  f"justify-content:center;gap:14px'><span class='kct-spinner kct-spinner-lg'></span>"
                  f"<div style='font-weight:600;text-align:center'>{escape(text)}</div>"
                  f"<div style='width:100%;max-width:640px'>{bars}</div></div>")
+
+
+# --- input ----------------------------------------------------------------------------------
+
+def tree(folder, limit: int = 40):
+    """A folder as an indented tree (files and folders)."""
+    folder = Path(folder)
+    lines: List[str] = []
+    for path in sorted(folder.rglob("*")):
+        if path.name.startswith((".", "~$")):
+            continue
+        depth = len(path.relative_to(folder).parts) - 1
+        icon = "📁" if path.is_dir() else _icon(path.name)
+        lines.append(f"<div style='padding-left:{depth * 18}px'>{icon} {escape(path.name)}</div>")
+        if len(lines) >= limit:
+            lines.append("<div>…</div>")
+            break
+    return _html(f"<div style='{CARD}font-family:Menlo,Consolas,monospace;font-size:12px'>"
+                 f"<b>{escape(folder.name)}/</b>{''.join(lines)}</div>")
 
 
 def _icon(name: str) -> str:
@@ -216,6 +249,46 @@ def criteria(step):
         f"<div style='color:{RED};font-weight:600;margin-top:10px'>Fails if any is true</div>{refuse}</div>")
 
 
+def excel_preview(markdown_text: str, columns: int = 11, normal_rows: int = 3):
+    """The first sheet of a converted workbook: header, a few rows, and every colored row."""
+    lines = markdown_text.split("\n")
+    start = next((i for i, line in enumerate(lines) if line.startswith("| Row |")), None)
+    if start is None:
+        return notice("No table found in this workbook text.", "warn")
+    header = [c.strip() for c in lines[start].strip("|").split("|")][:columns + 1]
+    body, shown_normal = [], 0
+    for line in lines[start + 2:]:
+        if not line.startswith("|"):
+            break
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        colored = "{row fill:" in cells[0]
+        if not colored and shown_normal >= normal_rows:
+            continue
+        shown_normal += not colored
+        background = RED_BG if "light red" in cells[0] else (AMBER_BG if colored else "#FFFFFF")
+        tds = []
+        for cell in cells[:columns + 1]:
+            notes = re.findall(r"\{([^}]*)\}", cell)
+            value = escape(re.sub(r"\s*\{[^}]*\}", "", cell))
+            marks = "".join(f"<div style='font-size:10px;color:{RED if 'red' in n else GREY}'>{escape(n)}</div>"
+                            for n in notes if not n.startswith("merged"))
+            tds.append(f"<td style='border:1px solid #E5E7EB;padding:2px 5px'>{value}{marks}</td>")
+        body.append(f"<tr style='background:{background}'>{''.join(tds)}</tr>")
+    heads = "".join(f"<th style='border:1px solid #E5E7EB;padding:2px 5px;background:{GREY_BG}'>{escape(h)}</th>"
+                    for h in header)
+    return _html(f"<div style='{CARD}overflow-x:auto'><div style='font-weight:700;margin-bottom:6px'>"
+                 f"What the AI reads from the workbook (first {columns} columns; colored rows kept with their color)"
+                 f"</div><table style='border-collapse:collapse;font-size:11px'><tr>{heads}</tr>{''.join(body)}"
+                 f"</table></div>")
+
+
+def markdown(text: str, max_lines: int = 60):
+    from IPython.display import Markdown
+
+    lines = text.split("\n")
+    return Markdown("\n".join(lines[:max_lines]) + ("\n\n…" if len(lines) > max_lines else ""))
+
+
 # --- progress -------------------------------------------------------------------------------
 
 class Progress:
@@ -258,6 +331,56 @@ class Progress:
 
 # --- results --------------------------------------------------------------------------------
 
+def kpis(assessment, currency: str = ""):
+    meta, verdicts = assessment.metadata, assessment.verdicts
+    effective = sum(v.verdict == "effective" for v in verdicts)
+    no_evidence = sum(v.no_evidence for v in verdicts)
+    boxes = [(effective, "effective", GREEN), (len(verdicts) - effective, "not effective", RED),
+             (no_evidence, "without evidence", AMBER), (meta.evidence_files, "evidence files", BLUE)]
+    cells = "".join(f"<div style='flex:1;text-align:center;padding:6px'><div style='font-size:34px;font-weight:800;"
+                    f"color:{c}'>{n}</div><div style='color:{GREY}'>{escape(l)}</div></div>" for n, l, c in boxes)
+    facts = [f"{len(verdicts)} test steps", f"{meta.parts_total} evidence parts"]
+    if meta.duration_seconds is not None:
+        facts.append(f"{meta.duration_seconds:.0f} s run time")
+    if meta.input_tokens or meta.output_tokens:
+        facts.append(f"{meta.input_tokens + meta.output_tokens:,} tokens")
+    if meta.estimated_cost is not None:
+        facts.append(f"cost {meta.estimated_cost:.2f} {currency}")
+    facts.append(f"model {meta.model}")
+    return _html(f"<div style='{CARD}'><div style='display:flex;gap:8px'>{cells}</div>"
+                 f"<div style='color:{GREY};text-align:center;margin-top:6px'>{escape(' · '.join(facts))}</div></div>")
+
+
+def matrix(assessment):
+    from services.assessment.matrix import Matrix, traceability
+
+    data = traceability(assessment)
+    styles = {"supports": ("✓", GREEN, GREEN_BG), "contradicts": ("✗", RED, RED_BG), "partly": ("◐", AMBER, AMBER_BG),
+              "not_relevant": ("", GREY, "#FFFFFF"), "failed": ("?", GREY, GREY_BG)}
+    heads = "".join(f"<th title='{escape(u)}' style='padding:4px 8px;background:{GREY_BG}'>{escape(Matrix.short(u))}</th>"
+                    for u in data.units)
+    rows = []
+    for row in data.rows:
+        cells = "".join(
+            f"<td style='text-align:center;background:{styles[row.cells[u]][2]};color:{styles[row.cells[u]][1]};"
+            f"font-weight:700;border:1px solid #E5E7EB'>{styles[row.cells[u]][0]}</td>" for u in data.units)
+        rows.append(f"<tr><td style='padding:3px 8px;border:1px solid #E5E7EB;white-space:nowrap'>"
+                    f"<b>{escape(row.step_reference)}</b> <span style='color:{GREY}'>{escape(row.title)}</span></td>"
+                    f"<td style='padding:3px 8px;border:1px solid #E5E7EB'>{_verdict_badge(row.verdict, row.no_evidence)}"
+                    f"</td>{cells}</tr>")
+    legend = (f"{_badge('✓ supports', GREEN, GREEN_BG)} {_badge('✗ contradicts', RED, RED_BG)} "
+              f"{_badge('◐ partly', AMBER, AMBER_BG)} {_badge('? not assessed', GREY, GREY_BG)} "
+              f"<span style='color:{GREY}'>empty = says nothing about the step</span>")
+    names = " · ".join(f"<b>{escape(Matrix.short(u))}</b> {escape(u)}" for u in data.units)
+    return _html(
+        f"<div style='{CARD}overflow-x:auto'><div style='font-weight:700;margin-bottom:6px'>"
+        f"Traceability: what each evidence file shows for each test step</div>"
+        f"<table style='border-collapse:collapse'><tr><th style='padding:4px 8px;background:{GREY_BG}'>"
+        f"Test step</th><th style='padding:4px 8px;background:{GREY_BG}'>Verdict</th>{heads}</tr>{''.join(rows)}"
+        f"</table><div style='margin-top:8px'>{legend}</div>"
+        f"<div style='color:{GREY};font-size:11px;margin-top:6px'>{names}</div></div>")
+
+
 def verdict_card(verdict, step=None):
     exceptions = "".join(
         f"<div style='background:{RED_BG};border-radius:8px;padding:8px 10px;margin:6px 0'>"
@@ -276,6 +399,62 @@ def verdict_card(verdict, step=None):
         f"<div style='font-size:15px;font-weight:700'>{escape(verdict.step_reference)}: {escape(verdict.title)}</div>"
         f"{_verdict_badge(verdict.verdict, verdict.no_evidence)}</div>{description}"
         f"<div style='margin:8px 0'>{escape(verdict.reason)}</div>{exceptions}{refs}{problems}</div>")
+
+
+def trust(assessment, runs: int = 1):
+    """The guardrails, with this run's numbers."""
+    parts = assessment.parts
+    references = sum(len([c for c in f.criteria if c.reference]) + len([e for e in f.exceptions if e.reference])
+                     for p in parts for f in p.findings)
+    problems = sum(len(f.reference_problems) for p in parts for f in p.findings) + \
+        sum(len(v.reference_problems) for v in assessment.verdicts)
+    fallback = sum(v.fallback for v in assessment.verdicts)
+    failed = sum(p.status == "failed" for p in parts)
+    meta = assessment.metadata
+    items = [
+        ("🔎", f"{references} evidence references checked against the documents sent; {problems} flagged",
+         "The AI must cite document, page, sheet/row or email; a citation that does not exist is flagged, never hidden."),
+        ("⚖️", "Missing evidence means not effective",
+         "No relevant evidence → not effective, flagged 'no evidence'. A step the AI skips → not effective, flagged 'fallback'"
+         f" ({fallback} in this run)."),
+        ("🧩", f"{len(parts)} evidence parts, {failed} failed",
+         "Big files are split so nothing is skimmed; a part that fails is recorded and shown, the run continues."),
+        ("🔒", "Read-only report with fingerprints",
+         f"PDF without edit rights; SHA-256 of the report ({(meta.report_sha256 or '')[:16]}…) and of every evidence file stored."),
+        ("🗂️", f"{runs} run(s) kept for this control",
+         "Every run is stored with its model, inputs and results; nothing is overwritten."),
+    ]
+    rows = "".join(f"<div style='display:flex;gap:10px;margin:7px 0'><div style='font-size:20px'>{i}</div>"
+                   f"<div><b>{escape(t)}</b><div style='color:{GREY}'>{escape(d)}</div></div></div>"
+                   for i, t, d in items)
+    return _html(f"<div style='{CARD}'><div style='font-weight:700;margin-bottom:4px'>Why the result can be trusted"
+                 f"</div>{rows}</div>")
+
+
+def savings(assessment, manual_hours: Optional[float], hourly_rate: Optional[float] = None, currency: str = ""):
+    meta = assessment.metadata
+    minutes = (meta.duration_seconds or 0) / 60
+    if manual_hours is None:
+        body = (f"<div>KCT run: <b>{minutes:.1f} min</b>"
+                + (f", <b>{meta.estimated_cost:.2f} {escape(currency)}</b> AI cost" if meta.estimated_cost is not None else "")
+                + f"</div><div style='color:{AMBER};margin-top:6px'>Set MANUAL_HOURS (your estimate of manual testing time "
+                  "for this control) to show the comparison.</div>")
+    else:
+        saved = manual_hours - minutes / 60
+        body = (f"<div style='display:flex;gap:8px;text-align:center'>"
+                f"<div style='flex:1'><div style='font-size:30px;font-weight:800;color:{GREY}'>{manual_hours:g} h</div>"
+                f"<div style='color:{GREY}'>manual testing (your estimate)</div></div>"
+                f"<div style='flex:1'><div style='font-size:30px;font-weight:800;color:{BLUE}'>{minutes:.1f} min</div>"
+                f"<div style='color:{GREY}'>KCT run, before review</div></div>"
+                f"<div style='flex:1'><div style='font-size:30px;font-weight:800;color:{GREEN}'>{saved:.1f} h</div>"
+                f"<div style='color:{GREY}'>freed for review and judgement</div></div></div>")
+        if hourly_rate:
+            body += (f"<div style='color:{GREY};text-align:center;margin-top:6px'>≈ {saved * hourly_rate:,.0f} "
+                     f"{escape(currency)} per control at {hourly_rate:g}/h"
+                     + (f", AI cost {meta.estimated_cost:.2f}" if meta.estimated_cost is not None else "") + "</div>")
+    return _html(f"<div style='{CARD}'><div style='font-weight:700;margin-bottom:6px'>Time</div>{body}"
+                 f"<div style='color:{GREY};font-size:11px;margin-top:8px'>A tester still reviews the verdicts; "
+                 f"KCT prepares them with evidence references.</div></div>")
 
 
 def report_link(path: str, sha256: str = ""):

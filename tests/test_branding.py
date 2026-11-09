@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import dataclasses
+import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
@@ -55,6 +56,16 @@ class BrandingTest(unittest.TestCase):
             with_logo = AssessmentReport(assessment, interpretation).build()
         self.assertTrue(without.startswith(b"%PDF") and with_logo.startswith(b"%PDF"))
         self.assertGreater(with_logo.count(b"/Subtype /Image"), without.count(b"/Subtype /Image"))
+
+
+    @unittest.skipUnless(importlib.util.find_spec("IPython"), "IPython is not installed (it comes with Jupyter)")
+    def test_dashboard_banner_shows_logo_or_wordmark(self) -> None:
+        from services.presentation import notebook as show
+
+        with self.with_logo(Path("/nowhere/logo.png")):
+            self.assertIn(">ING</span>", show.banner("Title").data)
+        with self.with_logo(placeholder_logo()):
+            self.assertIn("data:image/png;base64,", show.banner("Title").data)
 
 
 if __name__ == "__main__":

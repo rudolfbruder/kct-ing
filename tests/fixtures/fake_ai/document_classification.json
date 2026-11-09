@@ -1,7 +1,17 @@
-[
- {
-  "control_details": "Control Details CTL-IAM-0472 (SAMPLE).docx",
-  "test_plan": "Test Plan TP-PRC-IAM-014 2026Q1 (SAMPLE).pdf",
-  "reason": "Fake answer: the first describes control CTL-IAM-0472 (owner, frequency, activity); the second lists test steps, the population and the sample size."
+{
+ "_match": [
+  {
+   "regex": "Control Details CTL-IAM-0472 \\(SAMPLE\\)\\.docx",
+   "answer": {
+    "control_details": "Control Details CTL-IAM-0472 (SAMPLE).docx",
+    "test_plan": "Test Plan TP-PRC-IAM-014 2026Q1 (SAMPLE).pdf",
+    "reason": "Fake answer: the first describes control CTL-IAM-0472 (owner, frequency, activity); the second lists test steps, the population and the sample size."
+   }
+  }
+ ],
+ "_default": {
+  "control_details": "",
+  "test_plan": "",
+  "reason": "Fake answer: the fake AI only knows the sample control's files."
  }
-]
+}

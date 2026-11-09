@@ -285,7 +285,8 @@ class AssessmentApiTest(unittest.TestCase):
         from services.assessment.agents.evidence_assessment_agent import EvidenceAssessmentAgent
 
         self.add_evidence()
-        good = (Path(__file__).parent / "fixtures" / "fake_ai" / "evidence_assessment.json").read_text(encoding="utf-8")
+        fixture = json.loads((Path(__file__).parent / "fixtures" / "fake_ai" / "evidence_assessment.json").read_text(encoding="utf-8"))
+        good = json.dumps(fixture["_match"][0]["answer"])
         EvidenceAssessmentAgent.fake([good, '{"findings": "not a list"}', good])
         try:
             assessment_id = self.start()

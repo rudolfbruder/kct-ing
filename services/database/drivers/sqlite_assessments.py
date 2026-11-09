@@ -24,7 +24,12 @@ CREATE TABLE IF NOT EXISTS assessments (
     finished_at             TEXT,
     error                   TEXT,
     report_path             TEXT,
-    report_sha256           TEXT
+    report_sha256           TEXT,
+    evidence_files          INTEGER NOT NULL DEFAULT 0,
+    duration_seconds        REAL,
+    input_tokens            INTEGER NOT NULL DEFAULT 0,
+    output_tokens           INTEGER NOT NULL DEFAULT 0,
+    estimated_cost          REAL
 );
 
 CREATE TABLE IF NOT EXISTS assessment_parts (
@@ -53,6 +58,13 @@ CREATE INDEX IF NOT EXISTS step_verdicts_assessment_id ON step_verdicts (assessm
 """
 
 COLUMNS = list(AssessmentMetadata.model_fields)
+ADDED_COLUMNS = {
+    "evidence_files": "INTEGER NOT NULL DEFAULT 0",
+    "duration_seconds": "REAL",
+    "input_tokens": "INTEGER NOT NULL DEFAULT 0",
+    "output_tokens": "INTEGER NOT NULL DEFAULT 0",
+    "estimated_cost": "REAL",
+}
 
 
 class SqliteAssessments:
@@ -60,6 +72,11 @@ class SqliteAssessments:
 
     def _create_assessment_tables(self, con) -> None:
         con.executescript(ASSESSMENT_SCHEMA)
+        # Columns added later: add them to a database made by an older version.
+        have = {row[1] for row in con.execute("PRAGMA table_info(assessments)")}
+        for column, ddl in ADDED_COLUMNS.items():
+            if column not in have:
+                con.execute(f"ALTER TABLE assessments ADD COLUMN {column} {ddl}")
 
     def create_assessment(self, metadata: AssessmentMetadata) -> None:
         values = metadata.model_dump()

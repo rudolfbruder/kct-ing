@@ -14,11 +14,21 @@ _providers: dict[str, TextProvider] = {}
 
 def provider(name: str, config: Settings | None = None) -> TextProvider:
     if name not in _providers:
-        _providers[name] = _make(name, config or settings())
+        config = config or settings()
+        made = _make(name, config)
+        if config.ai_record and name not in ("fake", "replay"):
+            from services.ai.providers.replay import RecordingProvider
+
+            made = RecordingProvider(made, config.recordings_root / config.ai_record)
+        _providers[name] = made
     return _providers[name]
 
 
 def _make(name: str, config: Settings) -> TextProvider:
+    if name == "replay":
+        from services.ai.providers.replay import ReplayProvider
+
+        return ReplayProvider(config.recordings_root / config.ai_replay)
     if name == "fake":
         from services.ai.providers.fake import FakeProvider
 

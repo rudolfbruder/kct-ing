@@ -9,6 +9,7 @@ max_tokens comes back truncated, so a too-low limit fails the same way.
 from __future__ import annotations
 
 import json
+import re
 import os
 import random
 import time
@@ -41,7 +42,7 @@ class FakeProvider:
 
     def prompt(self, request: ProviderRequest) -> ProviderResponse:
         self._pause()
-        text = self._answer(request.agent)
+        text = self._answer(request.agent, request.prompt)
 
         # Vertex bills a PDF at about 258 tokens per page; assume ~50 KB a page.
         input_tokens = estimate_tokens(request.instructions + request.prompt) + sum(
@@ -61,9 +62,20 @@ class FakeProvider:
             truncated=truncated,
         )
 
-    def _answer(self, agent: str) -> str:
-        """The fixture's text; a fixture that is a JSON list answers its items in turn."""
+    def _answer(self, agent: str, prompt: str = "") -> str:
+        """The fixture's text.
+
+        A JSON list answers its items in turn. A JSON object with "_match" answers the first
+        entry whose "regex" is found in the prompt, else "_default": so the fake can answer
+        differently per evidence file.
+        """
         text = self._fixture(agent).read_text(encoding="utf-8")
+        if text.lstrip().startswith("{") and '"_match"' in text:
+            rules = json.loads(text)
+            for rule in rules["_match"]:
+                if re.search(rule["regex"], prompt):
+                    return json.dumps(rule["answer"])
+            return json.dumps(rules["_default"])
         if text.lstrip().startswith("["):
             items = json.loads(text)
             calls = self._calls.get(agent, 0)

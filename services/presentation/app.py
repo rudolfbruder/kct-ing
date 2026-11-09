@@ -12,7 +12,7 @@ later releases are shown greyed out, marked "soon":
     2 Test steps   run the interpretation, browse the steps and their criteria
     3 Evidence     the case's evidence files, upload more, see the parts the AI gets
     4 Assess       run the assessment with a live progress bar
-    5 Result       the verdict of every test step, with exceptions, and the PDF
+    5 Result       verdicts, traceability matrix, exceptions, trust panel, the PDF
 
 After each step a "Next" button leads to the next tab.
 Every button calls a plain method (create_case, interpret, ...), so the same work can be done
@@ -304,7 +304,7 @@ class KctApp:
         self.header = w.VBox([
             w.HTML(STYLE),
             w.HTML(show.banner(title, subtitle).data),
-            w.HTML(show.mode(config.ai_provider, config.ai_model).data),
+            w.HTML(show.mode(config.ai_provider, config.ai_model, config.ai_replay).data),
             w.HBox(header_row)])
         self.widget = w.VBox([self.header, self.tabs])
         self.widget.add_class("kct-app")
@@ -466,10 +466,10 @@ class KctApp:
         interpretation = self.kct.database.find_interpretation(assessment.metadata.case_interpretation_id)
         steps = {s.id: s for s in interpretation.test_steps}
         config = self._settings()
-        effective = sum(v.verdict == "effective" for v in assessment.verdicts)
-        blocks = [show.notice(f"{effective} of {len(assessment.verdicts)} test steps effective, "
-                              f"{len(assessment.verdicts) - effective} not effective", "info")]
-        blocks += [show.verdict_card(v, steps.get(v.test_step_id)) for v in assessment.verdicts]
+        blocks = [show.kpis(assessment, config.price_currency), show.matrix(assessment)]
+        blocks += [show.verdict_card(v, steps.get(v.test_step_id)) for v in assessment.verdicts
+                   if v.verdict != "effective"]
+        blocks.append(show.trust(assessment, runs=len(self.kct.assessments.index(assessment.metadata.case_reference))))
         if assessment.metadata.report_path:
             path = (config.storage_root / assessment.metadata.report_path) if config.files_driver == "local" \
                 else assessment.metadata.report_path

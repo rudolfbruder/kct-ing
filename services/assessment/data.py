@@ -127,6 +127,12 @@ class AssessmentMetadata(BaseModel):
     error: Optional[str] = None
     report_path: Optional[str] = None
     report_sha256: Optional[str] = None
+    # Run figures (set when completed)
+    evidence_files: int = 0
+    duration_seconds: Optional[float] = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    estimated_cost: Optional[float] = None    # only with KCT_PRICE_* set; in KCT_PRICE_CURRENCY
 
 
 class Assessment(BaseModel):
