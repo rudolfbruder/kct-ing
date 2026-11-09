@@ -8,7 +8,7 @@ The process, in the words used everywhere in this project (code, logs, docs):
 
 | Step | What it does | Status |
 |---|---|---|
-| **Case** | Upload the control details and test plan PDFs; stored as `case-NNN` | done |
+| **Case** | Import a control from SharePoint (ZIP or synced folder, sorted by the AI), or upload the control details and test plan PDFs | done |
 | **Interpretation** | Summarize both documents and turn them into test steps with acceptance and refusal criteria (JSON) | done |
 | **Evidence** | Upload evidence files per case (Word, Excel, Outlook emails, PDF, images), convert them for the AI and split big ones into parts | done |
 | **Assessment** | Judge each test step effective / not effective against the evidence: one AI call per evidence part, then one call that combines | done (fake AI); real Gemini run pending |
@@ -38,7 +38,8 @@ says otherwise.
 | 09 | `09_evidence_email.ipynb` | Outlook emails (.msg) to text; their Word, Excel and email attachments converted too |
 | 10 | `10_evidence_case.ipynb` | Evidence of one case: upload, convert, split into the parts the assessment will send (calls and tokens) |
 | 11 | `11_assessment.ipynb` | The assessment: size check, run with progress, verdicts, exceptions, reference problems, the PDF |
-| App | `KCT_App.ipynb` (project root) | **The clickable app**: tabs for case, test steps, evidence, assessment, result; no code to type |
+| 12 | `12_import.ipynb` | Import a control from SharePoint: ZIP (kept, sorted per case) or folder; AI picks the control details and the test plan, the rest is evidence |
+| App | `KCT_App.ipynb` (project root) | **The clickable app**: tabs for import, test steps, evidence, assessment, result; no code to type |
 
 ## The clickable app (Jupyter)
 
@@ -49,7 +50,7 @@ Tabs and buttons of later releases are shown greyed out, marked 'soon'.
 
 | Tab | What you do |
 |---|---|
-| 1 Case | Pick a case in the **Case** list, choose the control details and the test plan (PDF), **Make test steps** (a new run). New control: **+ New case**, just a name |
+| 1 Case | Pick a case in the **Case** list, choose the control details and the test plan, **Make test steps** (a new run). New control: **+ New case** (just a name), or import its SharePoint folder as a ZIP (select the folder > Download) or a folder path |
 | 2 Test steps | **Make test steps**, then pick a step to see its pass and fail criteria |
 | 3 Evidence | See the evidence, **Add files** + **Upload**, **Show parts for the AI** |
 | 4 Assess | **Run assessment**, with a live progress bar |
@@ -58,7 +59,7 @@ Tabs and buttons of later releases are shown greyed out, marked 'soon'.
 
 `MODE` in the first cell: `fake` (sample answers after 1-3 seconds) or `live` (Gemini from `.env`).
 It is built with `ipywidgets` (`services/presentation/app.py`, class `KctApp`); every button
-calls a plain method (`create_case`, `interpret`, `upload_evidence`, `run_assessment`, `show_result`),
+calls a plain method (`create_case`, `interpret`, `upload_evidence`, `run_assessment`, `show_result`, `import_zip`),
 so the same steps work from code, and the services do the work as everywhere else.
 
 ## Ways to run it
@@ -390,6 +391,9 @@ too low fails the same way.
 | `KCT_EVIDENCES_ROOT` | `<storage>/evidences` | Evidence documents (assessment). Any folder layout below it |
 | `KCT_ASSESSMENT_MAX_TOKENS` | `32768` | Output limit per evidence part (assessment) |
 | `KCT_VERDICT_MAX_TOKENS` | `32768` | Output limit of the final verdict call |
+| `KCT_IMPORT_ROOT` | | Folder the API may import control folders from (`POST /cases/import`); empty = off |
+| `KCT_ZIP_MAX_MB` | `2048` | Largest unpacked size of an uploaded ZIP |
+| `KCT_ZIP_MAX_FILES` | `5000` | Most files in an uploaded ZIP |
 | `KCT_PDF_MAX_PAGES` | `50` | Evidence PDFs with more pages are split into parts |
 | `KCT_PDF_MAX_MB` | `20` | Evidence PDFs (or parts) bigger than this are split further |
 | `KCT_PDF_OVERLAP_PAGES` | `2` | Pages repeated at each cut, so nothing is lost at a page break |
@@ -452,6 +456,9 @@ Notebooks in `notebooks/`:
   email as text (header, body with lists, red text and inline images) and its
   attachments through the Word, Excel and email converters. Can create a fake
   evidence email first. See "Email evidence".
+- `12_import.ipynb`: imports a control as ING keeps it in SharePoint, from a
+  ZIP or a synced folder, and shows every sorting decision. See "Importing a
+  control from SharePoint".
 - `11_assessment.ipynb`: runs the assessment of a case with progress per
   evidence part, then shows the verdicts, exceptions, reference problems and
   the read-only PDF. See "Assessment".
@@ -906,6 +913,55 @@ MsgFactory(history=6, images=3).create(folder)   # a longer thread
 `python scripts/make_sample_evidence.py` writes all three into the evidences
 folder.
 
+## Importing a control from SharePoint
+
+ING keeps each control in SharePoint (*KCT.AI > Documents*) as:
+
+```
+<control folder>/                         e.g. "5.0 Password resets of privileged accounts"
+└── Input/
+    ├── Evidence/                         any subfolders
+    └── Test Plan and Control Details/    control details and test plan in one folder
+```
+
+Two ways in, one result: a case named after the control folder, its control
+details and test plan stored for the interpretation, its evidence in
+`storage/evidences/<case>/`, optionally the interpretation and assessment run.
+
+| From | How | Notes |
+|---|---|---|
+| **ZIP** (SharePoint: select the folder > Download) | `kct.importer.import_zip(path)`, `POST /cases/import-zip` (multipart `file`, optional `case_name`, `interpret`, `assess`) | The ZIP is kept in `storage/imports/<case>/source/` (timestamped), unpacked and sorted into `storage/imports/<case>/Input/...`, with `other/` for the rest and `import.json` with every decision |
+| **Folder** (OneDrive sync or unpacked) | `kct.importer.import_folder(path)`, `POST /cases/import` (`{"path": ...}`, only inside `KCT_IMPORT_ROOT`) | The source folder is only read: conversions run on temporary copies, so nothing is uploaded back to SharePoint by OneDrive |
+
+**Who decides what each file is**
+
+| Situation | Decided by |
+|---|---|
+| ZIP or folder with the SharePoint folders | Folders decide what is evidence. Among the files in "Test Plan and Control Details" one AI call (`DocumentClassifierAgent`, `prompts/document_classification.md`) picks the one control details file and the one test plan; any other file there is evidence |
+| Flat ZIP (no folders) | One AI call picks the control details and the test plan among all files; everything else is evidence |
+| The AI chose wrong | Choose by hand: `overrides={"file name": "control_details", "other file": "test_plan"}` (folder import); one role set by hand is enough, the AI picks the other |
+
+There is always exactly one control details file and one test plan. The AI gets
+the list of files (folder names are a hint) and the start of each: the first 2
+pages of a PDF or the first 6,000 characters of a text, enough to recognise it
+and cheap to send. Word is converted to PDF, Excel and emails to text first. If
+the AI's answer does not name two different listed files, the import stops and
+says so, so the choice can be made by hand.
+
+**Re-import.** The same control folder gives the same case
+(`5.0-Password-resets-...`; accents are transliterated). Its documents are
+replaced, its evidence mirrors the folder (files gone from SharePoint are
+removed, and listed), earlier interpretations and assessments stay.
+
+**ZIP safety.** Paths that would leave the folder, password-protected entries
+and likely ZIP bombs are refused; symbolic links, `__MACOSX`, hidden files and
+Office lock files (`~$...`) are skipped. Limits: `KCT_ZIP_MAX_MB`,
+`KCT_ZIP_MAX_FILES`. Names from Windows ZIPs without the UTF-8 flag are
+decoded, so Slovak and Dutch names survive.
+
+`ControlFolderFactory` makes a fake control folder (`.create(root)`) or its
+ZIP (`.zip()`, `.zip(flat=True)`) for demos and tests.
+
 ## Assessment
 
 Judges a case's evidence against its test steps. Logic: `AssessmentService`
@@ -998,6 +1054,7 @@ leave behind. Choose groups, look at the list, then confirm:
 | `evidence_samples` | The fake files from the factories (`*_SAMPLE.*`) | on |
 | `demo_files` | `storage/demo/`, `sqlite_test.sqlite`, `api_from_notebook.log` | on |
 | `reports` | Assessment PDFs: `outputs/<case>/assessment_*.pdf` | on |
+| `imports` | Uploaded ZIPs, their sorted copies and `import.json` (`storage/imports/`) | off |
 | `cases` | `uploads/` and `outputs/`: every stored case, real uploaded PDFs included | off |
 | `logs` | `storage/logs/` | off |
 | `evidence_all` | Everything in the evidences folder, real evidence included | off |
@@ -1056,6 +1113,7 @@ controllers/
   ask_controller.py             POST /ask smoke test
   evidences_controller.py       Evidence of a case: upload, list, parts
   assessments_controller.py     Assessment: start (background), progress, results, report.pdf
+  imports_controller.py         Import a control: folder (POST /cases/import) or ZIP (POST /cases/import-zip)
   case_interpretations_controller.py  Read stored case interpretations
   summary_controller.py         One summary (part of the interpretation)
   cases_controller.py           Health, case listings
@@ -1067,6 +1125,9 @@ services/
   config.py                     All settings, read from env
   playground/ask_service.py     AskService: one question to the provider (smoke test)
   maintenance/cleanup_service.py  CleanupService: deletes demo and test leftovers, plan first
+  importing/
+    case_import_service.py      CaseImportService: control folder or ZIP (SharePoint structure) into a case
+    document_classifier_agent.py  The AI that picks the control details and the test plan
   assessment/
     assessment_service.py       AssessmentService: loop over evidence parts, combine, save, report
     agents/                     EvidenceAssessmentAgent (per part), VerdictAgent (combine)
@@ -1101,7 +1162,7 @@ services/
     data.py                     TestStep, CaseInterpretation and other data shapes
 scripts/test_steps.py           Print test steps of a case interpretation
 KCT_App.ipynb                   The clickable app in Jupyter
-factories/                      DocxFactory, ExcelFactory, MsgFactory, PdfFactory: fake evidence files
+factories/                      DocxFactory, ExcelFactory, MsgFactory, PdfFactory, ControlFolderFactory: fake evidence and control folders
 scripts/make_sample_evidence.py Write the fake evidence files with the factories
 notebooks/                      Demo notebooks, run them in order:
   00_cleanup.ipynb              Clean slate (shows the list, deletes after CONFIRM)
@@ -1116,6 +1177,7 @@ notebooks/                      Demo notebooks, run them in order:
   09_evidence_email.ipynb       Outlook emails to text, attachments converted
   10_evidence_case.ipynb        Evidence of a case: upload, convert, split into parts
   11_assessment.ipynb           The assessment: run, verdicts, exceptions, read-only PDF
+  12_import.ipynb               Import a control from SharePoint: ZIP or folder, AI sorting
 prompts/<agent name>.md         Each agent's instructions (evidence_assessment.md, evidence_verdict.md for the assessment)
 tests/fixtures/fake_ai/         Fake mode answers, one per agent
 kct.sh                          All setup and run commands without Docker

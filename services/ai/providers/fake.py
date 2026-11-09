@@ -8,6 +8,7 @@ max_tokens comes back truncated, so a too-low limit fails the same way.
 """
 from __future__ import annotations
 
+import json
 import os
 import random
 import time
@@ -28,6 +29,7 @@ class FakeProvider:
 
     def __init__(self, fixtures: Path) -> None:
         self.fixtures = fixtures
+        self._calls: dict = {}
 
     @staticmethod
     def _pause() -> None:
@@ -39,7 +41,7 @@ class FakeProvider:
 
     def prompt(self, request: ProviderRequest) -> ProviderResponse:
         self._pause()
-        text = self._fixture(request.agent).read_text(encoding="utf-8")
+        text = self._answer(request.agent)
 
         # Vertex bills a PDF at about 258 tokens per page; assume ~50 KB a page.
         input_tokens = estimate_tokens(request.instructions + request.prompt) + sum(
@@ -58,6 +60,16 @@ class FakeProvider:
             usage=Usage(input_tokens=input_tokens, output_tokens=output_tokens),
             truncated=truncated,
         )
+
+    def _answer(self, agent: str) -> str:
+        """The fixture's text; a fixture that is a JSON list answers its items in turn."""
+        text = self._fixture(agent).read_text(encoding="utf-8")
+        if text.lstrip().startswith("["):
+            items = json.loads(text)
+            calls = self._calls.get(agent, 0)
+            self._calls[agent] = calls + 1
+            return json.dumps(items[calls % len(items)])
+        return text
 
     def _fixture(self, agent: str) -> Path:
         for suffix in (".json", ".md", ".txt"):

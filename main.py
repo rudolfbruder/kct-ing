@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from routes.api import router
 from services.ai.exceptions import AiConfigurationError
 from services.assessment.exceptions import AssessmentFailedError
+from services.importing.case_import_service import ImportFolderError
 from services.control_testing.exceptions import InterpretationFailedError
 from services.database.exceptions import DatabaseConfigurationError, RecordNotFoundError
 from services.evidences.exceptions import ConversionError, InvalidEvidenceError
@@ -73,3 +74,9 @@ def conversion_failed(_: Request, exc: ConversionError) -> JSONResponse:
 def assessment_failed(_: Request, exc: AssessmentFailedError) -> JSONResponse:
     log.error("%s", exc)
     return _error(409, exc)
+
+
+@app.exception_handler(ImportFolderError)
+def import_failed(_: Request, exc: ImportFolderError) -> JSONResponse:
+    log.error("Import: %s", exc)
+    return _error(422, exc)

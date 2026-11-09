@@ -9,6 +9,7 @@ from controllers.ask_controller import AskController
 from controllers.assessments_controller import AssessmentsController
 from controllers.case_interpretations_controller import CaseInterpretationsController
 from controllers.cases_controller import CasesController
+from controllers.imports_controller import ImportsController
 from controllers.evidences_controller import (
     EvidenceFileModel,
     EvidencePartModel,
@@ -24,6 +25,7 @@ from services.control_testing.data import (
     SummaryResult,
 )
 from services.assessment.data import Assessment, AssessmentMetadata
+from services.importing.data import ImportResult
 from services.playground.ask_service import AskResult
 
 kct = boot()
@@ -34,12 +36,15 @@ interpretations = CaseInterpretationsController(kct.database)
 ask = AskController(kct.ask)
 evidences = EvidencesController(kct.files, kct.evidences)
 assessments = AssessmentsController(kct.assessments)
+imports = ImportsController(kct.importer, kct.assessments)
 
 router = APIRouter(prefix="/api/v1")
 
 router.add_api_route("/health", cases.health, methods=["GET"])
 router.add_api_route("/ask", ask.store, methods=["POST"], response_model=AskResult)
 router.add_api_route("/cases", cases.index, methods=["GET"])
+router.add_api_route("/cases/import", imports.store, methods=["POST"], response_model=ImportResult)
+router.add_api_route("/cases/import-zip", imports.store_zip, methods=["POST"], response_model=ImportResult)
 router.add_api_route("/cases/{case_id}/files/{kind}", cases.files_index, methods=["GET"])
 
 # Interpretation: one summary (part of the interpretation)

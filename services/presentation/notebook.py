@@ -164,6 +164,27 @@ def _icon(name: str) -> str:
             "zip": "🗜️", "md": "📄", "txt": "📄"}.get(suffix, "📄")
 
 
+def sorting(result):
+    """What the import decided for each file."""
+    rows = []
+    # a flat ZIP lists every file it sorted; a folder import lists its two documents
+    items = result.sorted_by_ai or [*result.control_details, *result.test_plan, *result.other]
+    for item in items:
+        color, bg = {"control_details": (BLUE, BLUE_BG), "test_plan": (GREEN, GREEN_BG),
+                     "evidence": (GREY, GREY_BG), "other": (AMBER, AMBER_BG)}[item.role]
+        rows.append(f"<tr><td>{_icon(item.name)} {escape(item.name)}</td>"
+                    f"<td>{_badge(item.role.replace('_', ' '), color, bg)}</td>"
+                    f"<td style='color:{GREY}'>{escape(item.reason)} "
+                    f"<i>({'set by hand' if item.by == 'override' else 'AI' if item.role != 'evidence' else 'rule'})</i></td></tr>")
+    evidence = "".join(f"<div>{_icon(p)} {escape(p)}</div>" for p in result.evidence)
+    skipped = "".join(f"<div style='color:{GREY}'>⏭ {escape(s.path)}: {escape(s.reason)}</div>" for s in result.skipped)
+    return _html(
+        f"<div style='{CARD}'><div style='font-weight:700;margin-bottom:6px'>Documents sorted</div>"
+        f"<table style='border-collapse:collapse;width:100%'>{''.join(rows)}</table>"
+        f"<div style='font-weight:700;margin:10px 0 4px'>Evidence for the case ({len(result.evidence)})</div>"
+        f"{evidence}{skipped}</div>")
+
+
 # --- interpretation and evidence --------------------------------------------------------------
 
 def test_steps(interpretation, limit: int = 30):

@@ -7,7 +7,8 @@
 One case at a time (chosen at the top), one tab per step of the work. Tabs and buttons of
 later releases are shown greyed out, marked "soon":
 
-    1 Case         upload the control details and the test plan (PDF) -> a new case
+    1 Case         upload a SharePoint ZIP (or give a folder) -> case, sorted files;
+                   or upload the control details and the test plan yourself
     2 Test steps   run the interpretation, browse the steps and their criteria
     3 Evidence     the case's evidence files, upload more, see the parts the AI gets
     4 Assess       run the assessment with a live progress bar
@@ -151,14 +152,23 @@ class KctApp:
         self.create_button.on_click(lambda _: self._safe(self.case_out, self._create_clicked))
         self.cd_upload = w.FileUpload(accept=".pdf", multiple=False, description="Control details")
         self.tp_upload = w.FileUpload(accept=".pdf", multiple=False, description="Test plan")
-        self._style(self.new_name, primary=[self.create_button])
+        self.zip_upload = w.FileUpload(accept=".zip", multiple=False, description="Choose ZIP")
+        self.case_name = w.Text(placeholder="optional: case name (default: from the ZIP)", layout=w.Layout(width="50%"))
+        self.folder_path = w.Text(placeholder="or a control folder on this machine, e.g. /home/jupyter/sharepoint/5.0 ...",
+                                  layout=w.Layout(width="70%"))
+        self.import_button = w.Button(description="Import", icon="upload")
+        self.import_button.on_click(lambda _: self._safe(self.case_out, self._import_clicked))
+        self._style(self.zip_upload, self.case_name, self.folder_path, self.new_name, self.import_button,
+                    primary=[self.create_button])
         self.new_box = w.VBox([
             w.HTML(f"<div class='kct-section'>{show.svg('folder-plus')} New case</div>"
                    "<div class='kct-hint'>Give it a name; its documents come with each run.</div>"),
             w.HBox([self.new_name, self.create_button]),
-            w.HTML("<div class='kct-section kct-soon-text'>Import the control folder from SharePoint (ZIP or folder) "
-                   "<span class='kct-soon-badge'>coming soon</span></div>"),
-            self._soon_button("Import ZIP", "upload", "Upload the SharePoint control folder as a ZIP")])
+            w.HTML(f"<div class='kct-section'>{show.svg('upload')} Or import a control folder</div>"
+                   "<div class='kct-hint'>Upload it as a ZIP (SharePoint: select the folder > Download), or type "
+                   "the path of a folder on this machine: the case is made with its documents and evidence. "
+                   "KCT picks the control details and the test plan; everything else is evidence.</div>"),
+            w.HBox([self.zip_upload, self.case_name]), self.folder_path, self.import_button])
         # an existing case: its documents, and a new run (case interpretation) of it
         self.case_info = w.Output()
         self.rerun_button = w.Button(description="Make test steps", icon="list",
@@ -290,7 +300,7 @@ class KctApp:
             self.tabs.set_title(index, f"{TAB_ICONS.get(name.split(' · ')[0], '')} {name}".strip())
 
         config = self._settings()
-        subtitle = "From the control documents and their evidence to a verdict per test step"
+        subtitle = "From the SharePoint control folder to a traceable verdict per test step"
         self.header = w.VBox([
             w.HTML(STYLE),
             w.HTML(show.banner(title, subtitle).data),
@@ -358,6 +368,20 @@ class KctApp:
         self.new_name.value = ""
         return case
 
+    def import_zip(self, data: bytes, filename: str, case_name: str = ""):
+        with self._busy(self.case_out, f"Importing {filename}: choosing the control details and the test plan …",
+                        self.import_button):
+            result = self.kct.importer.import_zip(data, filename, case_name=case_name)
+        self._after_import(result)
+        return result
+
+    def import_folder(self, path: str):
+        with self._busy(self.case_out, f"Importing {path}: choosing the control details and the test plan …",
+                        self.import_button):
+            result = self.kct.importer.import_folder(path)
+        self._after_import(result)
+        return result
+
     def interpret(self):
         case = self._need_case()
         self.step_out.clear_output()
@@ -404,7 +428,7 @@ class KctApp:
         rows = "".join(f"<div>{show._icon(str(p))} {show.escape(str(p))} "
                        f"<span style='color:{show.GREY}'>({evidence.path(p).stat().st_size / 1024:.0f} KB)</span></div>"
                        for p in files)
-        body = rows or "<i>No evidence yet: add files above.</i>"
+        body = rows or "<i>No evidence yet: add files above, or import a ZIP that has an Evidence folder.</i>"
         self._show(self.evidence_out, show._html(
             f"<div style='{show.CARD}'>" + (f"<div style='color:{show.GREEN}'>{show.escape(note)}</div>" if note else "")
             + f"<b>{len(files)} evidence file(s)</b>{body}</div>"))
@@ -560,6 +584,27 @@ class KctApp:
     def _run_clicked(self) -> None:
         control_details, test_plan = _uploads(self.cd_upload.value), _uploads(self.tp_upload.value)
         self.new_run(control_details[0] if control_details else None, test_plan[0] if test_plan else None)
+
+    def _import_clicked(self) -> None:
+        uploads = _uploads(self.zip_upload.value)
+        if uploads:
+            name, data = uploads[0]
+            self.import_zip(data, name, self.case_name.value.strip())
+        elif self.folder_path.value.strip():
+            self.import_folder(self.folder_path.value.strip())
+        else:
+            self._show(self.case_out, show.notice("Choose a ZIP or type a folder first.", "warn"))
+
+    def _after_import(self, result) -> None:
+        self._open_fresh(result.case_id)
+        with self.case_out:
+            self.case_out.clear_output()
+            from IPython.display import display
+
+            display(show.notice(f"Case {result.case_name} is ready, with {len(result.evidence)} evidence file(s). "
+                                "Next: make its test steps.", "ok"))
+            display(show.sorting(result))
+        self._ready(0)
 
     def _upload_clicked(self) -> None:
         files = _uploads(self.evidence_upload.value)

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Optional
@@ -24,6 +26,7 @@ UPLOADS = "uploads"
 OUTPUTS = "outputs"
 # Empty file that claims a case number, so two uploads never get the same one.
 CASE_MARKER = ".case"
+CASE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}")
 
 
 @dataclass(frozen=True)
@@ -36,23 +39,47 @@ class FileService:
     def __init__(self, disk: Optional[Disk] = None) -> None:
         self.disk = disk or default_disk()
 
-    def store_case(self, uploads: dict[DocumentKind, list[UploadedFile]]) -> str:
-        """Saves the uploads as a new case and returns its ID (case-001, case-002, ...)."""
+    def store_case(
+        self,
+        uploads: dict[DocumentKind, list[UploadedFile]],
+        case_id: Optional[str] = None,
+        name: str = "",
+    ) -> str:
+        """Saves the uploads as a case and returns its ID.
+
+        Without case_id: a new numbered case (case-001, case-002, ...).
+        With case_id (e.g. made from a control folder's name by case_id_from_name): that case,
+        created if new; documents of the kinds uploaded replace the earlier ones. `name` is the
+        human name kept with the case (the control folder's name).
+        PDFs, and Markdown text (.md, e.g. a test plan that came as Excel), are accepted.
+        """
         for kind, files in uploads.items():
             if not files:
                 raise InvalidUploadError(f"No {kind.value} file uploaded")
             for file in files:
+                if file.name.lower().endswith(".md"):
+                    continue
                 if not file.data.startswith(b"%PDF"):
                     raise InvalidUploadError(f"{kind.value}: {file.name} is not a PDF")
 
-        case_id = self._new_case_id()
+        if case_id is None:
+            case_id = self._new_case_id()
+            if name:
+                self.disk.put(f"{UPLOADS}/{case_id}/{CASE_MARKER}", json.dumps({"name": name}).encode())
+        else:
+            if not CASE_ID.fullmatch(case_id):
+                raise InvalidUploadError(f"Invalid case id {case_id!r}")
+            self.disk.put(f"{UPLOADS}/{case_id}/{CASE_MARKER}", json.dumps({"name": name or case_id}).encode())
+            for kind in uploads:
+                for old in self.disk.files(f"{UPLOADS}/{case_id}/{kind.value}"):
+                    self.disk.delete(f"{UPLOADS}/{case_id}/{kind.value}/{old}")
         for kind, files in uploads.items():
             for file in files:
                 self.disk.put(f"{UPLOADS}/{case_id}/{kind.value}/{_safe_name(file.name)}", file.data)
         return case_id
 
     def case_name(self, case_id: str) -> str:
-        """The human name of a case, or its ID when it has none."""
+        """The human name of a case (a control folder's name), or its ID when it has none."""
         try:
             return json.loads(self.disk.get(f"{UPLOADS}/{case_id}/{CASE_MARKER}") or b"{}").get("name") or case_id
         except (FileNotFoundError, ValueError):
@@ -104,9 +131,10 @@ class FileService:
         return self.disk.directories(UPLOADS)
 
     def document_names(self, case_id: str, kind: DocumentKind) -> list[str]:
-        names = [n for n in self.disk.files(f"{UPLOADS}/{case_id}/{kind.value}") if n.lower().endswith(".pdf")]
+        names = [n for n in self.disk.files(f"{UPLOADS}/{case_id}/{kind.value}")
+                 if n.lower().endswith((".pdf", ".md"))]
         if not names:
-            raise CaseNotFoundError(f"No {kind.value} PDFs for {case_id}")
+            raise CaseNotFoundError(f"No {kind.value} documents for {case_id}")
         return names
 
     def documents(self, case_id: str, kind: DocumentKind) -> list[Document]:
@@ -114,6 +142,7 @@ class FileService:
             Document(
                 data=self.disk.get(f"{UPLOADS}/{case_id}/{kind.value}/{name}"),
                 title=f"{kind.label}: {name}",
+                mime_type="text/plain" if name.lower().endswith(".md") else "application/pdf",
             )
             for name in self.document_names(case_id, kind)
         ]
@@ -146,4 +175,17 @@ class FileService:
 def _safe_name(name: str) -> str:
     # PurePosixPath(...).name drops any directory part a client sends in the filename.
     safe = PurePosixPath(name.replace("\\", "/")).name or "upload.pdf"
-    return safe if safe.lower().endswith(".pdf") else f"{safe}.pdf"
+    return safe if safe.lower().endswith((".pdf", ".md")) else f"{safe}.pdf"
+
+
+def case_id_from_name(name: str) -> str:
+    """A case ID made from a human name, safe for folders and URLs.
+
+    "5.0 Test of IAM resets (Q1)" -> "5.0-Test-of-IAM-resets-Q1"
+    """
+    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()   # č -> c, Ö -> O
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", ascii_name.strip()).strip("-.")
+    slug = re.sub(r"-{2,}", "-", slug)[:80].strip("-.")
+    if not slug:
+        raise InvalidUploadError(f"Cannot make a case id from {name!r}")
+    return slug

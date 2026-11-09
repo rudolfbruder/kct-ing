@@ -177,7 +177,7 @@ class AssessmentService:
 
         result = self.database.find_assessment(metadata.assessment_id)
         result.metadata.finished_at = _now()
-        pdf = AssessmentReport(result, interpretation).build()
+        pdf = AssessmentReport(result, interpretation, self.files.case_name(case)).build()
         path = self.files.save_output(case, f"assessment_{metadata.assessment_id}.pdf", pdf)
         self.database.update_assessment(metadata.assessment_id, status="completed", finished_at=result.metadata.finished_at,
                                         report_path=path, report_sha256=_sha256(pdf))

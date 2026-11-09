@@ -36,9 +36,10 @@ def _ref(reference: Reference) -> str:
 
 
 class AssessmentReport:
-    def __init__(self, assessment: Assessment, interpretation: CaseInterpretation) -> None:
+    def __init__(self, assessment: Assessment, interpretation: CaseInterpretation, case_name: str = "") -> None:
         self.assessment = assessment
         self.interpretation = interpretation
+        self.case_name = case_name
 
     def build(self) -> bytes:
         from reportlab.lib import colors
@@ -77,7 +78,8 @@ class AssessmentReport:
         meta = self.assessment.metadata
         interpretation = self.interpretation.metadata
         rows = [
-            ("Case", meta.case_reference),
+            ("Case", meta.case_reference if self.case_name in ("", meta.case_reference)
+             else f"{self.case_name} ({meta.case_reference})"),
             ("Assessment", meta.assessment_id),
             ("Test steps from", f"interpretation {interpretation.case_interpretation_id} ({interpretation.created_at[:19]})"),
             ("Model", f"{meta.provider} / {meta.model}"),

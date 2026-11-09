@@ -10,6 +10,7 @@ Groups:
     database          the SQLite file (KCT_DB_PATH) with all case interpretations and test steps
     cases             uploads/ and outputs/: every stored case and its readable results
     reports           the assessment PDFs (outputs/<case>/assessment_*.pdf)
+    imports           uploaded ZIPs, their sorted copies and import.json (storage/imports/)
     evidence_outputs  what the converters made in the evidences folder: PDFs next to .docx files,
                       .xlsx.md / .msg.md texts, *_images and *_attachments folders, Excel PDF copies
     evidence_samples  the fake evidence files from the factories (*_SAMPLE.*), case folders included
@@ -35,6 +36,7 @@ GROUPS: Dict[str, str] = {
     "database": "SQLite database: all case interpretations and test steps",
     "cases": "Stored cases: uploads/ and outputs/",
     "reports": "Assessment reports: outputs/<case>/assessment_*.pdf",
+    "imports": "Imported ZIPs and their sorted folders: storage/imports/",
     "evidence_outputs": "Converted evidence: PDFs from Word, texts and pictures from Excel and emails",
     "evidence_samples": "Fake evidence files from the factories (*_SAMPLE.*) and their outputs",
     "evidence_all": "EVERYTHING in the evidences folder, real evidence included",
@@ -124,6 +126,10 @@ class CleanupService:
                            "GCS bucket is never cleaned from here")]
         return [self._target("cases", self.storage / name) for name in ("uploads", "outputs")
                 if (self.storage / name).exists()]
+
+    def _imports(self) -> List[Target]:
+        folder = self.storage / "imports"
+        return [self._target("imports", folder)] if folder.exists() else []
 
     def _reports(self) -> List[Target]:
         if self.config.files_driver == "gcs":

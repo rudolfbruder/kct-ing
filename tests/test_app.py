@@ -16,6 +16,7 @@ if "KCT_STORAGE_ROOT" not in os.environ:      # run on its own: own settings (te
     os.environ.update(KCT_ENV_FILE="", KCT_AI_PROVIDER="fake",
                       KCT_STORAGE_ROOT=str(Path(tempfile.mkdtemp(prefix="kct-app-"))))
 
+from factories import ControlFolderFactory  # noqa: E402
 from services.app import boot  # noqa: E402
 from services.presentation.app import KctApp, _uploads  # noqa: E402
 
@@ -77,16 +78,35 @@ class AppTest(unittest.TestCase):
         self.assertIn(Path("notes/extra note.txt"), app.show_evidence())
         self.assertGreaterEqual(len(app.show_parts()), 1)
 
-    def test_assessment_and_result(self) -> None:
+    def test_whole_flow_by_the_buttons_methods(self) -> None:
         app = KctApp(boot())
-        new_case(app)
-        app.interpret()
-        app.upload_evidence([("extra note.txt", b"Reviewed on 2026-03-31.")])
+        result = app.import_zip(ControlFolderFactory(excel_rows=10, pdf_pages=3).zip(), "control.zip",
+                                case_name="App test control")
+        self.assertEqual(app.case, result.case_id)
+        self.assertEqual(app.case_picker.value, result.case_id)
+        self.assertEqual(app.next_buttons[0].layout.display, "")
+
+        interpretation = app.interpret()
+        self.assertEqual(len(app.step_picker.options), len(interpretation.test_steps))
+
+        app.upload_evidence([("extra note.txt", b"Reviewed on 2026-03-31.")], folder="notes")
+        self.assertIn(Path("notes/extra note.txt"), app.show_evidence())
+        self.assertGreaterEqual(len(app.show_parts()), 5)
+
         assessment = app.run_assessment()
         self.assertEqual(assessment.metadata.status, "completed")
         self.assertEqual(app.tabs.selected_index, 4)
+        self.assertEqual(app.run_picker.value, assessment.metadata.assessment_id)
         self.assertEqual(app.show_result(assessment.metadata.assessment_id).metadata.assessment_id,
                          assessment.metadata.assessment_id)
+
+    def test_flat_zip_one_control_details_one_test_plan(self) -> None:
+        app = KctApp(boot())
+        result = app.import_zip(ControlFolderFactory(excel_rows=5, pdf_pages=2).zip(flat=True), "flat.zip",
+                                case_name="App flat control")
+        roles = [c.role for c in result.sorted_by_ai]
+        self.assertEqual((roles.count("control_details"), roles.count("test_plan")), (1, 1))
+        self.assertEqual(len(result.evidence), 4)
 
     def test_each_upload_is_a_new_run(self) -> None:
         app = KctApp(boot())
@@ -100,6 +120,12 @@ class AppTest(unittest.TestCase):
         reopened.case_picker.value = interpreted                       # a case picked at the top: clean too
         self.assertIsNone(reopened.step_picker.value)
         self.assertIsNotNone(reopened.show_steps())                    # the saved steps on request ('Show latest')
+        first = app.import_zip(ControlFolderFactory(excel_rows=5, pdf_pages=2).zip(), "c.zip", case_name="Again")
+        app.interpret()
+        again = app.import_zip(ControlFolderFactory(excel_rows=5, pdf_pages=2).zip(), "c.zip", case_name="Again")
+        self.assertEqual(again.case_id, first.case_id)                 # same control, same case
+        self.assertIsNone(app.step_picker.value)                       # but a new run: nothing shown from before
+        self.assertIsNone(app.interpretation_id)
         self.assertIsNone(app._safe(app.assess_out, app.run_assessment))   # needs the test steps of this run
 
     def test_a_case_is_a_name_and_each_run_brings_its_documents(self) -> None:

@@ -327,5 +327,48 @@ class AssessmentApiTest(unittest.TestCase):
         self.assertEqual(self.client.get("/api/v1/assessments/nope").status_code, 404)
 
 
+
+class ImportApiTest(unittest.TestCase):
+    def test_import_is_off_without_import_root_and_works_inside_it(self) -> None:
+        from unittest import mock
+
+        from factories import ControlFolderFactory
+        from services.config import settings
+
+        client = TestClient(app)
+        root = STORAGE / "sharepoint"
+        source = ControlFolderFactory(excel_rows=5, pdf_pages=2).create(root)
+        off = client.post("/api/v1/cases/import", json={"path": str(source)})
+        self.assertEqual(off.status_code, 422)
+        self.assertIn("KCT_IMPORT_ROOT", off.json()["detail"])
+
+        config = settings()
+        with mock.patch("controllers.imports_controller.settings",
+                        return_value=type(config)(**{**config.__dict__, "import_root": str(root)})):
+            outside = client.post("/api/v1/cases/import", json={"path": str(STORAGE)})
+            self.assertEqual(outside.status_code, 422)
+            done = client.post("/api/v1/cases/import", json={"path": str(source), "assess": True})
+        self.assertEqual(done.status_code, 200, done.text)
+        body = done.json()
+        self.assertTrue(body["case_interpretation_id"])
+        assessment = client.get(f"/api/v1/assessments/{body['assessment_id']}").json()
+        self.assertEqual(assessment["metadata"]["status"], "completed")
+        self.assertIn(body["case_id"], client.get("/api/v1/cases").json())
+
+
+    def test_zip_upload(self) -> None:
+        from factories import ControlFolderFactory
+
+        client = TestClient(app)
+        data = ControlFolderFactory(excel_rows=5, pdf_pages=2).zip()
+        response = client.post("/api/v1/cases/import-zip", files={"file": ("control.zip", data, "application/zip")},
+                               data={"interpret": "true"})
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body["case_interpretation_id"])
+        self.assertTrue(Path(body["source_zip"]).is_file())
+        self.assertTrue((Path(body["sorted_folder"]) / "import.json").is_file())
+
+
 if __name__ == "__main__":
     unittest.main()
