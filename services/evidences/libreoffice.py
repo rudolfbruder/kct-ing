@@ -10,6 +10,16 @@ from typing import Optional
 from services.evidences.exceptions import ConversionError
 
 MAC_APP = Path("/Applications/LibreOffice.app/Contents/MacOS/soffice")
+# Usual install places that are often not on PATH (macOS, Linux, Windows).
+KNOWN_PLACES = [
+    MAC_APP,
+    Path("/usr/lib/libreoffice/program/soffice"),
+    Path("/usr/lib64/libreoffice/program/soffice"),
+    Path("/opt/libreoffice/program/soffice"),
+    Path("/snap/bin/libreoffice"),
+    Path(r"C:\Program Files\LibreOffice\program\soffice.exe"),
+    Path(r"C:\Program Files (x86)\LibreOffice\program\soffice.exe"),
+]
 
 
 def binary() -> Optional[str]:
@@ -18,7 +28,10 @@ def binary() -> Optional[str]:
         found = shutil.which(name)
         if found:
             return found
-    return str(MAC_APP) if MAC_APP.is_file() else None
+    for place in KNOWN_PLACES + sorted(Path("/opt").glob("libreoffice*/program/soffice")):
+        if place.is_file():
+            return str(place)
+    return None
 
 
 def to_pdf(source: Path, pdf: Path, timeout: int = 300) -> Path:
