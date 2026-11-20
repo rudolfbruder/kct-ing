@@ -1,83 +1,80 @@
 """ConverterApp: Word to PDF in the Jupyter converter app, without a screen."""
 from __future__ import annotations
 
+import datetime
 import importlib.util
-import io
 import tempfile
 import unittest
 from pathlib import Path
 
-from services.presentation.converter_app import ConverterApp, _safe
+from services.evidences.bucket import safe_name
+from services.evidences.docx_builtin import sample_docx
+from services.presentation.converter_app import UNSUPPORTED, ConverterApp
 
-HAS_DOCX = all(importlib.util.find_spec(m) for m in ("docx", "reportlab"))
 HAS_WIDGETS = importlib.util.find_spec("ipywidgets") is not None
-
-
-def fake_docx() -> bytes:
-    import docx
-
-    document = docx.Document()
-    document.add_heading("Fake evidence", 1)
-    document.add_paragraph("Access review approved by a fake reviewer.")
-    table = document.add_table(rows=2, cols=2)
-    table.cell(0, 0).text, table.cell(0, 1).text = "User", "Role"
-    buffer = io.BytesIO()
-    document.save(buffer)
-    return buffer.getvalue()
 
 
 class ConverterAppTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
-        self.app = ConverterApp(output_root=self.root, engine="python", show=False)
+        self.app = ConverterApp(output_root=self.root, engine="builtin", show=False)
 
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    @unittest.skipUnless(HAS_DOCX, "python-docx and reportlab are needed")
-    def test_word_becomes_pdf(self) -> None:
-        result = self.app.convert_file("Evidence 01.docx", fake_docx())
-        self.assertTrue(result.ok)
-        self.assertEqual(result.engine, "python")
-        self.assertTrue(result.pdf.is_file())
-        self.assertTrue(result.pdf.read_bytes().startswith(b"%PDF"))
-        self.assertTrue(str(result.pdf).startswith(str(self.root.resolve())))
-        html = ConverterApp.render([result])
-        self.assertIn(str(result.pdf), html)
+    def test_word_becomes_a_bucket_with_pdf(self) -> None:
+        item = self.app.convert_file("Evidence 01.docx", sample_docx(["Hello"]))
+        self.assertEqual(item.status, "converted")
+        self.assertEqual(item.engine, "builtin")
+        self.assertTrue(item.pdf.read_bytes().startswith(b"%PDF"))
+        self.assertEqual(item.pdf.parent, item.folder)
+        self.assertEqual(item.folder.name, "Evidence 01")
+        self.assertTrue((item.folder / "source" / "Evidence 01.docx").is_file())
+        self.assertTrue((item.folder / "manifest.json").is_file())
+        html = ConverterApp.render([item])
+        self.assertIn(str(item.pdf), html)
+        self.assertIn(str(item.folder), html)
         self.assertIn("data:application/pdf;base64,", html)
+        self.assertIn("No embedded files", html)
 
     def test_other_formats_are_not_supported_yet(self) -> None:
         for name in ("a.pdf", "b.xlsx", "c.msg", "d.doc"):
-            result = self.app.convert_file(name, b"anything")
-            self.assertFalse(result.ok)
-            self.assertFalse(result.supported)
-            self.assertIn("not supported yet", result.error)
+            item = self.app.convert_file(name, b"anything")
+            self.assertEqual(item.status, UNSUPPORTED)
+            self.assertIn("not supported yet", item.error)
         self.assertEqual(list(self.root.iterdir()), [])   # nothing saved for them
 
     def test_broken_word_file_is_an_error_not_a_crash(self) -> None:
-        result = self.app.convert_file("broken.docx", b"not a word file")
-        self.assertFalse(result.ok)
-        self.assertTrue(result.supported)
-        self.assertTrue(result.error)
-        self.assertIn("failed", ConverterApp.render([result]))
+        item = self.app.convert_file("broken.docx", b"not a word file")
+        self.assertEqual(item.status, "failed")
+        self.assertTrue(item.error)
+        self.assertIn("failed", ConverterApp.render([item]))
 
-    @unittest.skipUnless(HAS_DOCX, "python-docx and reportlab are needed")
     def test_one_folder_per_click(self) -> None:
-        results = self.app.convert_uploads([("a.docx", fake_docx()), ("b.xlsx", b"x"), ("c.docx", fake_docx())])
-        self.assertEqual([r.ok for r in results], [True, False, True])
-        self.assertEqual(results[0].pdf.parent, results[2].pdf.parent)
+        items = self.app.convert_uploads([("a.docx", sample_docx(["a"])), ("b.xlsx", b"x"),
+                                          ("a.docx", sample_docx(["again"]))])
+        self.assertEqual([i.status for i in items], ["converted", UNSUPPORTED, "converted"])
+        self.assertEqual(items[0].folder.parent, items[2].folder.parent)
+        self.assertEqual(items[2].folder.name, "a_2")       # same name, own bucket
 
     def test_safe_names(self) -> None:
-        self.assertEqual(_safe("../../etc/passwd.docx"), "passwd.docx")
-        self.assertEqual(_safe("a/b:c?.docx"), "b_c_.docx")
+        self.assertEqual(safe_name("../../etc/passwd.docx"), "passwd.docx")
+        self.assertEqual(safe_name("C:\\Users\\x\\b:c?.docx"), "b_c_.docx")
 
     @unittest.skipUnless(HAS_WIDGETS, "ipywidgets is needed")
-    def test_screen_builds(self) -> None:
-        app = ConverterApp(output_root=self.root, show=True)
+    def test_screen_click(self) -> None:
+        app = ConverterApp(output_root=self.root, engine="builtin", show=True)
         self.assertIn("Only Word (.docx) works for now", app.box.children[0].value)
         app.start()   # nothing chosen
         self.assertIn("Choose a file first", app.status.value)
+        app.upload.value = ({"name": "ev.docx", "type": "", "size": 1, "content": memoryview(sample_docx(["x"])),
+                             "last_modified": datetime.datetime.now()},)
+        app.start()
+        self.assertIn("kct-spinner", app.status.value)
+        app._worker.join(timeout=60)
+        self.assertIn("converted", app.status.value)
+        self.assertFalse(app.convert_button.disabled)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,8 @@
     ConverterApp()            # last line of a cell: shows the app
 
 Choose files (Word, PDF, Excel, Outlook .msg), click Convert to PDF. A spinner shows while the
-work runs; then the app shows where the PDF is saved and a link to download it.
+work runs. Each document gets its own bucket (a folder, see services/evidences/bucket.py) with
+the PDF and every file embedded in the document; the app shows the paths and download links.
 
 Only Word (.docx) is converted for now. The other formats are accepted by the file picker so the
 whole path is visible, but they answer "not supported yet".
@@ -15,16 +16,17 @@ and is tested without a screen. Needs ipywidgets.
 from __future__ import annotations
 
 import base64
-import re
 import threading
 import traceback
-from dataclasses import dataclass
 from datetime import datetime
 from html import escape
 from pathlib import Path
 from typing import List, Optional
 
+from services.evidences.bucket import CONVERTED, FAILED, PDF, SAVED, BucketConverter, BucketItem, safe_name
 from services.evidences.docx_converter import DocxConverter
+
+UNSUPPORTED = "unsupported"
 
 ORANGE, ORANGE_DARK, NAVY = "#FF6200", "#E55800", "#000066"
 
@@ -79,22 +81,16 @@ STYLE = """
 .kct-conv a.kct-dl { display: inline-block; margin-top: 8px; background: """ + NAVY + """; color: #FFFFFF !important;
   text-decoration: none; border-radius: 8px; padding: 6px 14px; font-weight: 600; }
 .kct-conv a.kct-dl:hover { background: #1A1A80; }
+.kct-conv a.kct-dl-small { padding: 2px 10px; font-size: 12px; margin: 6px 0 0 6px; vertical-align: top; }
+.kct-conv ul.kct-tree { list-style: none; padding-left: 18px; margin: 6px 0 0 0; border-left: 2px solid #E5E7EB; }
+.kct-conv ul.kct-tree li { margin: 8px 0; }
+.kct-conv .kct-note { color: #6B7280; font-size: 12px; margin-top: 3px; }
+.kct-conv .kct-tag { border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; margin-left: 4px; }
+.kct-conv .kct-tag-converted, .kct-conv .kct-tag-pdf { background: #DCFCE7; color: #166534; }
+.kct-conv .kct-tag-saved { background: #F3F4F6; color: #4B5563; }
+.kct-conv .kct-tag-failed { background: #FEE2E2; color: #991B1B; }
 </style>
 """
-
-
-@dataclass(frozen=True)
-class ConversionResult:
-    """What happened to one file: converted (pdf set), not supported yet, or failed (error set)."""
-    name: str
-    pdf: Optional[Path] = None
-    engine: str = ""
-    supported: bool = True
-    error: str = ""
-
-    @property
-    def ok(self) -> bool:
-        return self.pdf is not None
 
 
 def _uploads(value) -> List[tuple]:
@@ -104,45 +100,35 @@ def _uploads(value) -> List[tuple]:
     return [(item["name"], bytes(item["content"])) for item in value or ()]
 
 
-def _safe(name: str) -> str:
-    """A file name without folders or odd characters."""
-    name = Path(name).name
-    return re.sub(r"[^A-Za-z0-9._ -]", "_", name).strip() or "document"
-
-
 class ConverterApp:
     def __init__(self, output_root: Optional[Path] = None, engine: str = "auto", show: bool = True) -> None:
         if output_root is None:
             from services.config import settings
             output_root = settings().storage_root / "converted"
         self.output_root = Path(output_root)
-        self.converter = DocxConverter(engine=engine)
-        self.results: List[ConversionResult] = []
+        self.converter = BucketConverter(DocxConverter(engine=engine))
+        self.results: List[BucketItem] = []
         self._worker: Optional[threading.Thread] = None
         if show:
             self._build()
 
     # --- the work (no screen needed) ----------------------------------------------------
 
-    def convert_file(self, name: str, content: bytes, folder: Optional[Path] = None) -> ConversionResult:
-        """Save one uploaded file and convert it to PDF when its format is supported."""
-        name = _safe(name)
+    def convert_file(self, name: str, content: bytes, folder: Optional[Path] = None) -> BucketItem:
+        """Convert one uploaded file into its bucket (a folder with the PDF and the embedded files)."""
+        name = safe_name(name)
         suffix = Path(name).suffix.lower()
         if suffix not in WORKING:
             kind = FORMAT_NAMES.get(suffix, suffix or "this file")
-            return ConversionResult(name=name, supported=False,
-                                    error=f"{kind} is not supported yet. Only Word (.docx) is converted for now.")
-        folder = folder or self._new_folder()
-        source = folder / name
-        source.write_bytes(content)
+            return BucketItem(name=name, status=UNSUPPORTED,
+                              error=f"{kind} is not supported yet. Only Word (.docx) is converted for now.")
         try:
-            done = self.converter.convert(source, pdf=folder / f"{source.stem}.pdf")
+            return self.converter.convert_bytes(name, content, folder or self._new_folder())
         except Exception as exc:  # shown in the app, never a crash
-            return ConversionResult(name=name, error=f"{type(exc).__name__}: {exc}")
-        return ConversionResult(name=name, pdf=done.pdf.resolve(), engine=done.engine)
+            return BucketItem(name=name, status=FAILED, error=f"{type(exc).__name__}: {exc}")
 
-    def convert_uploads(self, uploads: List[tuple]) -> List[ConversionResult]:
-        """Convert (name, bytes) pairs; all outputs of one click go into one new folder."""
+    def convert_uploads(self, uploads: List[tuple]) -> List[BucketItem]:
+        """Convert (name, bytes) pairs; the buckets of one click go into one new folder."""
         folder = self._new_folder() if any(Path(n).suffix.lower() in WORKING for n, _ in uploads) else None
         self.results = [self.convert_file(name, content, folder) for name, content in uploads]
         return self.results
@@ -166,10 +152,13 @@ class ConverterApp:
             STYLE +
             "<div class='kct-card'><div class='kct-head'><div class='kct-logo'>PDF</div><div>"
             "<div class='kct-title'>Document to PDF</div>"
-            "<div class='kct-sub'>Choose a document, convert it, download the PDF. Nothing leaves this machine.</div>"
+            "<div class='kct-sub'>Choose a document, convert it, download the PDF. Files embedded in the document "
+            "are taken out too. Nothing leaves this machine.</div>"
             "</div></div>"
             "<div class='kct-warn' style='margin-top:14px'><b>Only Word (.docx) works for now.</b> "
-            "PDF, Excel and Outlook (.msg) files can be chosen, but they are not converted yet.</div>"
+            "PDF, Excel and Outlook (.msg) files can be chosen, but they are not converted yet. "
+            "Files embedded in a Word document are all saved in its bucket; the embedded Word documents "
+            "are converted too.</div>"
             f"<div class='kct-formats'>{chips}</div></div>")
         self.upload = w.FileUpload(accept=",".join(ACCEPTED), multiple=True, description="Choose files")
         self.convert_button = w.Button(description="Convert to PDF", icon="file-pdf-o")
@@ -215,25 +204,59 @@ class ConverterApp:
                 pass
 
     @staticmethod
-    def render(results: List[ConversionResult]) -> str:
-        """HTML for the results: path and download link per converted file."""
+    def render(results: List[BucketItem]) -> str:
+        """HTML for the results: per document its bucket, the PDF, and every embedded file."""
+        budget = [MAX_LINK_BYTES * 2]     # download links of one click carry at most this much
+
+        def link(pdf: Path) -> str:
+            size = pdf.stat().st_size
+            if size > MAX_LINK_BYTES or size > budget[0]:
+                return ""
+            budget[0] -= size
+            data = base64.b64encode(pdf.read_bytes()).decode("ascii")
+            return (f" <a class='kct-dl kct-dl-small' download='{escape(pdf.name)}' "
+                    f"href='data:application/pdf;base64,{data}'>Download</a>")
+
+        def path(p: Path, base: Optional[Path] = None) -> str:
+            shown = str(p)
+            if base is not None:
+                try:
+                    shown = p.relative_to(base).as_posix()
+                except ValueError:
+                    pass
+            return f"<span class='kct-path' title='{escape(str(p))}'>{escape(shown)}</span>"
+
+        def tree(items: List[BucketItem], base: Path) -> str:
+            rows = []
+            for c in items:
+                icon = {CONVERTED: "📄", PDF: "📄", SAVED: "📎", FAILED: "❌"}.get(c.status, "•")
+                label = {CONVERTED: "converted to PDF", PDF: "already a PDF", SAVED: "saved", FAILED: "failed"}[c.status]
+                where = path(c.pdf, base) + link(c.pdf) if c.pdf else path(c.source, base) if c.source else ""
+                note = f"<div class='kct-note'>{escape(c.error)}</div>" if c.error else ""
+                rows.append(f"<li>{icon} <b>{escape(c.name)}</b> <span class='kct-tag kct-tag-{c.status}'>{label}</span>"
+                            f"<br>{where}{note}{tree(c.children, base) if c.children else ''}</li>")
+            return f"<ul class='kct-tree'>{''.join(rows)}</ul>"
+
         parts = []
         for r in results:
-            if r.ok:
-                size = r.pdf.stat().st_size
-                link = ""
-                if size <= MAX_LINK_BYTES:
-                    data = base64.b64encode(r.pdf.read_bytes()).decode("ascii")
-                    link = (f"<br><a class='kct-dl' download='{escape(r.pdf.name)}' "
-                            f"href='data:application/pdf;base64,{data}'>Download {escape(r.pdf.name)}</a>")
-                parts.append(
-                    f"<div class='kct-result kct-ok'>✅ <b>{escape(r.name)}</b> converted "
-                    f"<span style='color:#6B7280'>({size / 1024:.0f} KB, engine: {escape(r.engine)})</span>"
-                    f"<br>PDF saved at:<br><span class='kct-path'>{escape(str(r.pdf))}</span>{link}</div>")
-            elif not r.supported:
+            if r.status == UNSUPPORTED:
                 parts.append(f"<div class='kct-result kct-no'>⏳ <b>{escape(r.name)}</b>: {escape(r.error)}</div>")
-            else:
+                continue
+            if r.folder is None:
                 parts.append(f"<div class='kct-result kct-err'>❌ <b>{escape(r.name)}</b> failed: {escape(r.error)}</div>")
+                continue
+            embedded = sum(1 for _ in r.walk()) - 1
+            head = (f"✅ <b>{escape(r.name)}</b> converted <span style='color:#6B7280'>"
+                    f"({r.pdf.stat().st_size / 1024:.0f} KB, engine: {escape(r.engine)})</span>"
+                    if r.pdf else f"❌ <b>{escape(r.name)}</b>: the document itself failed: {escape(r.error)}")
+            parts.append(
+                f"<div class='kct-result {'kct-ok' if r.pdf else 'kct-err'}'>{head}"
+                f"<div style='margin-top:8px'>Bucket (everything for this document):<br>{path(r.folder)}</div>"
+                + (f"<div style='margin-top:8px'>PDF:<br>{path(r.pdf)}{link(r.pdf)}</div>" if r.pdf else "")
+                + (f"<div style='margin-top:10px'><b>Embedded files ({embedded})</b>"
+                   f"<div class='kct-note'>Paths inside the bucket.</div>{tree(r.children, r.folder)}</div>"
+                   if r.children else "<div class='kct-note' style='margin-top:8px'>No embedded files.</div>")
+                + "</div>")
         return "".join(parts)
 
     def _ipython_display_(self) -> None:

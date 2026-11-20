@@ -3,9 +3,9 @@
     converter = DocxConverter()                 # engine "auto"
     result = converter.convert(Path("EV-01.docx"))
     result.pdf                                   # EV-01.pdf next to it
-    result.engine                                # "libreoffice" or "python"
+    result.engine                                # "libreoffice", "python" or "builtin"
 
-Two engines:
+Three engines:
 
     libreoffice   soffice --headless --convert-to pdf. Keeps the Word layout
                   exactly. Used when LibreOffice is installed.
@@ -14,8 +14,13 @@ Two engines:
                   LibreOffice. Keeps the content (headings, paragraphs, bold and
                   italic, lists, tables, images) but not the exact Word layout:
                   columns, text boxes, headers and footers are dropped.
+    builtin       Python only, no package at all (services/evidences/docx_builtin.py):
+                  for machines where nothing can be installed. Keeps about the same
+                  content as "python"; Western European letters only (accents outside
+                  that set are dropped), JPEG and PNG pictures only.
 
-"auto" picks libreoffice when it is installed, python otherwise.
+"auto" picks libreoffice when it is installed, else python when python-docx and reportlab
+are installed, else builtin.
 """
 from __future__ import annotations
 
@@ -25,10 +30,10 @@ from pathlib import Path
 from typing import Optional
 from xml.sax.saxutils import escape
 
-from services.evidences import libreoffice
+from services.evidences import docx_builtin, libreoffice
 from services.evidences.exceptions import ConversionError
 
-ENGINES = ("auto", "libreoffice", "python")
+ENGINES = ("auto", "libreoffice", "python", "builtin")
 
 # Fonts tried in this order for the python engine (regular, bold, italic, bold italic).
 # DejaVu is on most Linux workbenches, Arial on macOS; reportlab's bundled Vera
@@ -42,6 +47,12 @@ FONT_CANDIDATES = [
      "/System/Library/Fonts/Supplemental/Arial Italic.ttf", "/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf"),
 ]
 FONT_NAME = "KctSans"
+
+
+def python_engine_installed() -> bool:
+    """True when python-docx and reportlab can be imported."""
+    import importlib.util
+    return all(importlib.util.find_spec(name) is not None for name in ("docx", "reportlab"))
 
 
 @dataclass(frozen=True)
@@ -78,9 +89,11 @@ class DocxConverter:
         pdf.parent.mkdir(parents=True, exist_ok=True)
 
         if engine == "auto":
-            engine = "libreoffice" if libreoffice.binary() else "python"
+            engine = "libreoffice" if libreoffice.binary() else "python" if python_engine_installed() else "builtin"
         if engine == "libreoffice":
             libreoffice.to_pdf(source, pdf, timeout=180)
+        elif engine == "builtin":
+            docx_builtin.to_pdf(source, pdf)
         else:
             self._with_python(source, pdf)
         return DocxConversion(source=source, pdf=pdf, engine=engine)
